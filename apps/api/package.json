@@ -1,0 +1,35 @@
+{
+  "name": "@gift-wishes/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npm run build && node dist/apps/api/src/main.js",
+    "build": "npm run build -w @gift-wishes/shared && nest build",
+    "start": "node dist/apps/api/src/main.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@gift-wishes/shared": "*",
+    "@nestjs/common": "^11.1.19",
+    "@nestjs/config": "^4.0.4",
+    "@nestjs/core": "^11.1.19",
+    "@nestjs/jwt": "^11.0.2",
+    "@nestjs/platform-express": "^11.1.19",
+    "@prisma/client": "^5.22.0",
+    "@ton/ton": "^15.0.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
+    "telegraf": "^4.16.3"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.21",
+    "@nestjs/testing": "^11.1.19",
+    "@types/node": "^22.10.1",
+    "typescript": "^5.6.3",
+    "vitest": "^4.1.5"
+  }
+}

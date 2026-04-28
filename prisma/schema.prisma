@@ -1,0 +1,123 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum WalletLedgerType {
+  deposit
+  withdrawal
+  purchase_hold
+  purchase
+  refund
+  split_transfer
+}
+
+enum LedgerStatus {
+  pending
+  confirmed
+  failed
+}
+
+enum PurchaseStatus {
+  quoted
+  pending
+  bought
+  delivered
+  failed
+  refunded
+}
+
+enum StarsLedgerType {
+  slot_purchase_stub
+  market_transfer_fee_stub
+}
+
+model User {
+  id                     String              @id @default(cuid())
+  telegramId             String              @unique
+  username               String?
+  firstName              String?
+  lastName               String?
+  languageCode           String?
+  isUsernameVisible      Boolean             @default(false)
+  tonBalanceNano         BigInt              @default(0)
+  purchasedWishlistSlots Int                 @default(0)
+  connectedWalletAddress String?
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+  wishlistItems          WishlistItem[]
+  walletLedgerEntries    WalletLedgerEntry[]
+  buyerPurchases         Purchase[]          @relation("BuyerPurchases")
+  recipientPurchases     Purchase[]          @relation("RecipientPurchases")
+  starsLedgerEntries     StarsLedgerEntry[]
+}
+
+model WishlistItem {
+  id             String     @id @default(cuid())
+  ownerUserId    String
+  collectionName String
+  modelName      String
+  backdropName   String?
+  symbolName     String?
+  createdAt      DateTime   @default(now())
+  owner          User       @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  purchases      Purchase[]
+
+  @@index([ownerUserId])
+}
+
+model WalletLedgerEntry {
+  id        String           @id @default(cuid())
+  userId    String
+  type      WalletLedgerType
+  amountNano BigInt
+  status    LedgerStatus     @default(pending)
+  txHash    String?
+  metadata  Json?
+  createdAt DateTime         @default(now())
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@unique([txHash, type])
+}
+
+model Purchase {
+  id                         String         @id @default(cuid())
+  buyerUserId                String
+  recipientUserId            String
+  wishlistItemId             String
+  market                     String
+  slug                       String
+  giftId                     String
+  priceNano                  BigInt
+  satelliteOriginalPrice     String
+  status                     PurchaseStatus @default(quoted)
+  requiresStarsTransferFee   Boolean        @default(false)
+  errorMessage               String?
+  createdAt                  DateTime       @default(now())
+  updatedAt                  DateTime       @updatedAt
+  buyer                      User           @relation("BuyerPurchases", fields: [buyerUserId], references: [id])
+  recipient                  User           @relation("RecipientPurchases", fields: [recipientUserId], references: [id])
+  wishlistItem               WishlistItem   @relation(fields: [wishlistItemId], references: [id])
+
+  @@index([buyerUserId, createdAt])
+  @@index([recipientUserId, createdAt])
+}
+
+model StarsLedgerEntry {
+  id          String          @id @default(cuid())
+  userId      String
+  type        StarsLedgerType
+  amountStars Int
+  status      LedgerStatus    @default(confirmed)
+  metadata    Json?
+  createdAt   DateTime        @default(now())
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
