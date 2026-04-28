@@ -1,4 +1,5 @@
 import { API_BASE, AUTH_TOKEN_STORAGE_KEY } from "./api";
+import { throwLoggedRequestError } from "./request-error";
 
 type TelegramWindow = Partial<Window> & {
   Telegram?: {
@@ -45,14 +46,15 @@ export async function authenticateWithTelegram({
     return null;
   }
 
-  const response = await fetcher(`${apiBase}/auth/telegram`, {
+  const url = `${apiBase}/auth/telegram`;
+  const response = await fetcher(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ initData })
   });
 
   if (!response.ok) {
-    throw new Error(await response.text());
+    await throwLoggedRequestError("POST", url, response);
   }
 
   const result = (await response.json()) as { token: string; user: unknown };

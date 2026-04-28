@@ -59,4 +59,37 @@ describe("authenticateWithTelegram", () => {
     expect(fetcher).not.toHaveBeenCalled();
     expect(result).toEqual({ token: "existing-token" });
   });
+
+  it("logs failed auth requests with status and response body", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const fetcher = vi.fn(async () => ({
+      ok: false,
+      status: 500,
+      statusText: "Internal Server Error",
+      json: async () => ({}),
+      text: async () => '{"statusCode":500,"message":"Internal server error"}'
+    }));
+
+    await expect(
+      authenticateWithTelegram({
+        initData: "query_id=1&hash=abc",
+        apiBase: "https://api.example.com/api",
+        fetcher,
+        storage: {
+          getItem: () => null,
+          setItem: vi.fn()
+        }
+      })
+    ).rejects.toThrow('POST https://api.example.com/api/auth/telegram failed 500 Internal Server Error: {"statusCode":500,"message":"Internal server error"}');
+
+    expect(errorSpy).toHaveBeenCalledWith("API request failed", {
+      method: "POST",
+      url: "https://api.example.com/api/auth/telegram",
+      status: 500,
+      statusText: "Internal Server Error",
+      body: '{"statusCode":500,"message":"Internal server error"}'
+    });
+
+    errorSpy.mockRestore();
+  });
 });

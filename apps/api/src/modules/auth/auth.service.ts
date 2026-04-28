@@ -52,7 +52,20 @@ export class AuthService {
       { secret: this.config.getOrThrow<string>("JWT_SECRET"), expiresIn: "12h" }
     );
 
-    return { token, user };
+    return {
+      token,
+      user: {
+        id: user.id,
+        telegramId: user.telegramId,
+        username: user.username,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        languageCode: user.languageCode,
+        tonBalanceNano: user.tonBalanceNano.toString(),
+        purchasedWishlistSlots: user.purchasedWishlistSlots,
+        connectedWalletAddress: user.connectedWalletAddress
+      }
+    };
   }
 
   private parseAndValidateInitData(initData: string): { user: TelegramInitUser } {
@@ -81,4 +94,3 @@ export class AuthService {
     return { user: JSON.parse(user) as TelegramInitUser };
   }
 }
-
