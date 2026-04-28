@@ -26,7 +26,7 @@ jobs:
       - run: npm ci
       - run: npm run build -w @gift-wishes/web
         env:
-          NEXT_PUBLIC_API_BASE_URL: ${{ vars.NEXT_PUBLIC_API_BASE_URL || 'https://d2ca-141-138-118-24.ngrok-free.app/api' }}
+          NEXT_PUBLIC_API_BASE_URL: ${{ vars.NEXT_PUBLIC_API_BASE_URL }}
           NEXT_PUBLIC_BASE_PATH: ${{ vars.NEXT_PUBLIC_BASE_PATH || format('/{0}', github.event.repository.name) }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
