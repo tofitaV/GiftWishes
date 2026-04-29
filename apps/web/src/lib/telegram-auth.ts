@@ -1,4 +1,10 @@
-import { API_BASE, AUTH_TOKEN_STORAGE_KEY, throwLoggedRequestError } from "./api";
+import {
+  API_BASE,
+  AUTH_TOKEN_STORAGE_KEY,
+  NGROK_SKIP_BROWSER_WARNING_HEADER,
+  NGROK_SKIP_BROWSER_WARNING_VALUE,
+  throwLoggedRequestError
+} from "./api";
 
 type TelegramWindow = Partial<Window> & {
   Telegram?: {
@@ -48,7 +54,10 @@ export async function authenticateWithTelegram({
   const url = `${apiBase}/auth/telegram`;
   const response = await fetcher(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      [NGROK_SKIP_BROWSER_WARNING_HEADER]: NGROK_SKIP_BROWSER_WARNING_VALUE
+    },
     body: JSON.stringify({ initData })
   });
 

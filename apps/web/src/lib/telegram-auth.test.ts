@@ -36,7 +36,10 @@ describe("authenticateWithTelegram", () => {
 
     expect(fetcher).toHaveBeenCalledWith("https://api.example.com/api/auth/telegram", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "69420"
+      },
       body: JSON.stringify({ initData: "query_id=1&hash=abc" })
     });
     expect(storage.get("gift-wishes-token")).toBe("jwt-token");
