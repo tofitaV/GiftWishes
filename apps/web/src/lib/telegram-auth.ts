@@ -1,5 +1,4 @@
-import { API_BASE, AUTH_TOKEN_STORAGE_KEY } from "./api";
-import { throwLoggedRequestError } from "./request-error";
+import { API_BASE, AUTH_TOKEN_STORAGE_KEY, throwLoggedRequestError } from "./api";
 
 type TelegramWindow = Partial<Window> & {
   Telegram?: {
