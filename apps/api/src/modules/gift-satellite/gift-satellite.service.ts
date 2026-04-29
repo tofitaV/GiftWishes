@@ -13,8 +13,10 @@ export class GiftSatelliteService {
 
   constructor(private readonly config: ConfigService) {}
 
-  getCollections() {
-    return this.request<unknown[]>("/gift/collections", "gift");
+  getCollections(premarket = 0) {
+    return this.request<unknown[]>("/gift/collections", "gift", {
+      query: { premarket }
+    });
   }
 
   getCollection(collection: string) {
@@ -107,4 +109,3 @@ export class GiftSatelliteService {
     this.lastRequestByBucket.set(bucket, Date.now());
   }
 }
-

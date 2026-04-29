@@ -1,0 +1,102 @@
+export type GiftCollection = {
+  id: string;
+  name: string;
+  imageUrl: string | null;
+  price: string | null;
+};
+
+export type GiftAttribute = {
+  id: string;
+  name: string;
+  imageUrl: string | null;
+  rarityPermille: number | null;
+};
+
+export type GiftCatalogCollection = GiftCollection & {
+  telegramId: string | null;
+  models: GiftAttribute[];
+  backdrops: GiftAttribute[];
+  patterns: GiftAttribute[];
+};
+
+type UnknownRecord = Record<string, unknown>;
+
+function asRecord(value: unknown): UnknownRecord {
+  return value && typeof value === "object" ? (value as UnknownRecord) : {};
+}
+
+function firstString(record: UnknownRecord, keys: string[]) {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "string" && value.trim().length > 0) return value;
+    if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  }
+  return null;
+}
+
+function firstNumber(record: UnknownRecord, keys: string[]) {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+  }
+  return null;
+}
+
+export function normalizeCollections(input: unknown): GiftCollection[] {
+  return (Array.isArray(input) ? input : []).flatMap((item) => {
+    const record = asRecord(item);
+    const name = firstString(record, ["name", "collectionName"]);
+    if (!name) return [];
+
+    return {
+      id: firstString(record, ["_id", "id", "telegramId"]) ?? name,
+      name,
+      imageUrl: firstString(record, ["imageUrl", "image", "photoUrl", "thumbnailUrl", "iconUrl"]),
+      price: firstString(record, ["floorPrice", "minPrice", "price", "normalizedPrice"])
+    };
+  });
+}
+
+export function normalizeAttributes(input: unknown): GiftAttribute[] {
+  return (Array.isArray(input) ? input : []).flatMap((item) => {
+    const record = asRecord(item);
+    const name = firstString(record, ["name", "modelName", "backdropName", "symbolName"]);
+    if (!name) return [];
+
+    return {
+      id: firstString(record, ["_id", "id", "telegramId"]) ?? name,
+      name,
+      imageUrl: firstString(record, ["imageUrl", "image", "photoUrl", "thumbnailUrl", "iconUrl"]),
+      rarityPermille: firstNumber(record, ["rarityPermille", "rarity"])
+    };
+  });
+}
+
+export function normalizeCatalog(input: unknown): GiftCatalogCollection[] {
+  const record = asRecord(input);
+  const collections = Array.isArray(record.collections) ? record.collections : [];
+
+  return collections.flatMap((item) => {
+    const collection = asRecord(item);
+    const normalized = normalizeCollections([collection])[0];
+    if (!normalized) return [];
+
+    return {
+      ...normalized,
+      telegramId: firstString(collection, ["telegramId"]),
+      models: normalizeAttributes(collection.models),
+      backdrops: normalizeAttributes(collection.backdrops),
+      patterns: normalizeAttributes(collection.patterns)
+    };
+  });
+}
+
+export function findCatalogCollection(collections: GiftCatalogCollection[], collectionName: string): GiftCatalogCollection | null {
+  return collections.find((collection) => collection.name === collectionName) ?? null;
+}
+
+export function filterBySearch<T extends { name: string }>(items: T[], query: string): T[] {
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  if (!normalizedQuery) return items;
+  return items.filter((item) => item.name.toLocaleLowerCase().includes(normalizedQuery));
+}
