@@ -13,6 +13,6 @@ describe("publicWishlistHref", () => {
 
 describe("appHref", () => {
   it("prefixes internal routes with the GitHub Pages base path", () => {
-    expect(appHref("/wallet", "/GiftWishes")).toBe("/GiftWishes/wallet/");
+    expect(appHref("/wishlist", "/GiftWishes")).toBe("/GiftWishes/wishlist/");
   });
 });

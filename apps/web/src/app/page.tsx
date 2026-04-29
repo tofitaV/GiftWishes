@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Wallet } from "lucide-react";
+import { Plus } from "lucide-react";
 import type { WishlistItemDto } from "@gift-wishes/shared";
 import { api } from "../lib/api";
 import { GiftCard } from "../components/gift-card";
 import { PublicWishlistClient } from "../components/public-wishlist-client";
-import { appHref } from "../lib/routing";
+// import { appHref } from "../lib/routing";
 import { authenticateWithTelegram, getTelegramInitData, prepareTelegramWebApp } from "../lib/telegram-auth";
 
 type MineResponse = {
@@ -91,9 +91,12 @@ export default function HomePage() {
             {wishlist.items.length}/{wishlist.limit} слотов
           </div>
         </div>
-        <a className="button secondary" href={appHref("/wallet")}>
-          <Wallet size={18} /> Баланс
-        </a>
+        {/*
+          Wallet UI is temporarily disabled.
+          <a className="button secondary" href={appHref("/wallet")}>
+            <Wallet size={18} /> Баланс
+          </a>
+        */}
       </header>
 
       {error ? <p className="card">{error}</p> : null}
