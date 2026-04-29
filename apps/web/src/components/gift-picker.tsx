@@ -6,6 +6,7 @@ import giftCatalog from "../data/gift-catalog.json";
 import {
   filterBySearch,
   findCatalogCollection,
+  getAdjacentCatalogCollection,
   normalizeCatalog,
   type GiftAttribute,
   type GiftCatalogCollection,
@@ -127,8 +128,17 @@ export function GiftPicker({ value, onChange }: Props) {
     mode === "models" ? selectedCollection?.models ?? [] : mode === "backdrops" ? selectedCollection?.backdrops ?? [] : mode === "patterns" ? selectedCollection?.patterns ?? [] : [];
   const filteredAttributes = useMemo(() => filterBySearch(currentItems, query), [currentItems, query]);
 
-  function openCollections() {
-    setMode("collections");
+  function toggleCollections() {
+    setMode((currentMode) => (currentMode === "collections" ? "closed" : "collections"));
+    setQuery("");
+  }
+
+  function selectAdjacentCollection(direction: -1 | 1) {
+    const collection = getAdjacentCatalogCollection(catalogCollections, value.collectionName, direction);
+    if (!collection) return;
+
+    onChange({ ...emptySelection(), collectionName: collection.name });
+    setMode("closed");
     setQuery("");
   }
 
@@ -140,7 +150,7 @@ export function GiftPicker({ value, onChange }: Props) {
 
   function openAttributeMode(nextMode: Exclude<PickerMode, "closed" | "collections">) {
     if (!value.collectionName) return;
-    setMode(nextMode);
+    setMode((currentMode) => (currentMode === nextMode ? "closed" : nextMode));
     setQuery("");
   }
 
@@ -152,16 +162,16 @@ export function GiftPicker({ value, onChange }: Props) {
       </div>
 
       <div className="selected-gift-row">
-        <button className="icon-button" type="button" aria-label="Назад к списку подарков" onClick={openCollections}>
+        <button className="icon-button" type="button" aria-label="Предыдущий подарок" onClick={() => selectAdjacentCollection(-1)}>
           <ArrowLeft size={20} />
         </button>
-        <button className="selected-gift-button" type="button" onClick={openCollections}>
+        <button className="selected-gift-button" type="button" onClick={toggleCollections}>
           <span className="gift-chip-media">
             {selectedCollection?.imageUrl ? <img src={selectedCollection.imageUrl} alt="" loading="lazy" /> : value.collectionName ? initials(value.collectionName) : "GW"}
           </span>
           <span>{value.collectionName || "Выбрать подарок"}</span>
         </button>
-        <button className="icon-button" type="button" aria-label="Открыть список подарков" onClick={openCollections}>
+        <button className="icon-button" type="button" aria-label="Следующий подарок" onClick={() => selectAdjacentCollection(1)}>
           <ChevronRight size={20} />
         </button>
       </div>

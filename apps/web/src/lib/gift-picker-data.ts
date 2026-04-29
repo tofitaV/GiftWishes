@@ -95,6 +95,18 @@ export function findCatalogCollection(collections: GiftCatalogCollection[], coll
   return collections.find((collection) => collection.name === collectionName) ?? null;
 }
 
+export function getAdjacentCatalogCollection(collections: GiftCatalogCollection[], collectionName: string, direction: -1 | 1): GiftCatalogCollection | null {
+  if (collections.length === 0) return null;
+
+  const currentIndex = collections.findIndex((collection) => collection.name === collectionName);
+  if (currentIndex === -1) {
+    return direction === 1 ? collections[0] : collections[collections.length - 1];
+  }
+
+  const nextIndex = (currentIndex + direction + collections.length) % collections.length;
+  return collections[nextIndex];
+}
+
 export function filterBySearch<T extends { name: string }>(items: T[], query: string): T[] {
   const normalizedQuery = query.trim().toLocaleLowerCase();
   if (!normalizedQuery) return items;

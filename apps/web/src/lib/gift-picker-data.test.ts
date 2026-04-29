@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filterBySearch, findCatalogCollection, normalizeAttributes, normalizeCatalog, normalizeCollections } from "./gift-picker-data";
+import { filterBySearch, findCatalogCollection, getAdjacentCatalogCollection, normalizeAttributes, normalizeCatalog, normalizeCollections } from "./gift-picker-data";
 
 describe("normalizeCollections", () => {
   it("keeps Satellite collection names and optional media/price fields", () => {
@@ -70,5 +70,23 @@ describe("normalizeCatalog", () => {
       backdrops: [{ id: "Cobalt Blue", name: "Cobalt Blue", imageUrl: null, rarityPermille: 10 }],
       patterns: [{ id: "Paw Print", name: "Paw Print", imageUrl: null, rarityPermille: 1 }]
     });
+  });
+});
+
+describe("getAdjacentCatalogCollection", () => {
+  const catalog = normalizeCatalog({
+    collections: [{ name: "Artisan Brick" }, { name: "Pool Float" }, { name: "Xmas Stocking" }]
+  });
+
+  it("returns the next or previous collection and wraps around", () => {
+    expect(getAdjacentCatalogCollection(catalog, "Pool Float", 1)?.name).toBe("Xmas Stocking");
+    expect(getAdjacentCatalogCollection(catalog, "Pool Float", -1)?.name).toBe("Artisan Brick");
+    expect(getAdjacentCatalogCollection(catalog, "Xmas Stocking", 1)?.name).toBe("Artisan Brick");
+    expect(getAdjacentCatalogCollection(catalog, "Artisan Brick", -1)?.name).toBe("Xmas Stocking");
+  });
+
+  it("starts from an edge when nothing is selected yet", () => {
+    expect(getAdjacentCatalogCollection(catalog, "", 1)?.name).toBe("Artisan Brick");
+    expect(getAdjacentCatalogCollection(catalog, "", -1)?.name).toBe("Xmas Stocking");
   });
 });
