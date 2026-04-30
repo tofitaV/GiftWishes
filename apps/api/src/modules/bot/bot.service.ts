@@ -23,6 +23,9 @@ type InlineWishlistResult = {
   };
 };
 
+const WISHLIST_START_PREFIX = "wishlist_";
+const DEFAULT_BOT_USERNAME = "giftwishes_bot";
+
 export function formatInlineWishlistMessage({ username, items }: { username: string | null; items: InlineWishlistItem[] }) {
   const displayName = username ? `@${username}` : "пользователя";
   if (items.length === 0) {
@@ -37,6 +40,19 @@ export function formatInlineWishlistMessage({ username, items }: { username: str
   });
 
   return [`Wishlist ${displayName}`, "", ...lines].join("\n");
+}
+
+export function parseWishlistStartPayload(payload: string | undefined) {
+  if (!payload?.startsWith(WISHLIST_START_PREFIX)) return null;
+
+  const ownerUserId = payload.slice(WISHLIST_START_PREFIX.length);
+  if (!/^[A-Za-z0-9_-]+$/.test(ownerUserId)) return null;
+  return ownerUserId;
+}
+
+export function createBotWishlistDeepLink({ botUsername, ownerUserId }: { botUsername: string; ownerUserId: string }) {
+  const username = botUsername.replace(/^@/, "");
+  return `https://t.me/${username}?start=${WISHLIST_START_PREFIX}${ownerUserId}`;
 }
 
 export function createInlineWishlistResult({ wishlistLink, message, itemCount }: { wishlistLink: string; message: string; itemCount: number }): InlineWishlistResult {
@@ -73,6 +89,14 @@ export class BotService implements OnModuleInit {
     return `${this.appUrl("/")}?${new URLSearchParams({ owner: userId }).toString()}`;
   }
 
+  private botUsername() {
+    return this.config.get<string>("BOT_USERNAME") ?? DEFAULT_BOT_USERNAME;
+  }
+
+  private botWishlistUrl(userId: string) {
+    return createBotWishlistDeepLink({ botUsername: this.botUsername(), ownerUserId: userId });
+  }
+
   onModuleInit() {
     const token = this.config.get<string>("BOT_TOKEN");
     if (!token) {
@@ -87,8 +111,7 @@ export class BotService implements OnModuleInit {
 
     this.bot.start(async (ctx) => {
       const from = ctx.from;
-      if (!from?.username) {
-        await ctx.reply("Bot cannot see your Telegram username. Add a username in Telegram and open the bot again.");
+      if (!from) {
         return;
       }
 
@@ -111,6 +134,27 @@ export class BotService implements OnModuleInit {
         }
       });
 
+      const ownerUserId = parseWishlistStartPayload((ctx as { payload?: string }).payload);
+      if (ownerUserId) {
+        const owner = await this.prisma.user.findUnique({
+          where: { id: ownerUserId },
+          include: { wishlistItems: { orderBy: { createdAt: "desc" } } }
+        });
+
+        if (!owner) {
+          await ctx.reply("Wishlist не найден.");
+          return;
+        }
+
+        await ctx.reply(formatInlineWishlistMessage({ username: owner.username, items: owner.wishlistItems }));
+        return;
+      }
+
+      if (!from.username) {
+        await ctx.reply("Bot cannot see your Telegram username. Add a username in Telegram and open the bot again.");
+        return;
+      }
+
       await ctx.reply("Gift Wishes is ready.", {
         reply_markup: { inline_keyboard: [[{ text: "Open wishlist", web_app: { url: this.appUrl() } }]] }
       });
@@ -124,7 +168,7 @@ export class BotService implements OnModuleInit {
       });
       if (!user) return ctx.answerInlineQuery([], { cache_time: 0 });
 
-      const wishlistLink = this.publicWishlistUrl(user.id);
+      const wishlistLink = this.botWishlistUrl(user.id);
       const message = formatInlineWishlistMessage({
         username: user.username,
         items: user.wishlistItems
