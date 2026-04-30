@@ -23,6 +23,10 @@ type InlineWishlistResult = {
   };
 };
 
+type WishlistProfileReplyMarkup = {
+  inline_keyboard: [[{ text: string; web_app: { url: string } }]];
+};
+
 const WISHLIST_START_PREFIX = "wishlist_";
 const DEFAULT_BOT_USERNAME = "giftwishes_bot";
 
@@ -53,6 +57,14 @@ export function parseWishlistStartPayload(payload: string | undefined) {
 export function createBotWishlistDeepLink({ botUsername, ownerUserId }: { botUsername: string; ownerUserId: string }) {
   const username = botUsername.replace(/^@/, "");
   return `https://t.me/${username}?start=${WISHLIST_START_PREFIX}${ownerUserId}`;
+}
+
+export function createWishlistProfileReplyMarkup({ ownerUsername, webAppUrl }: { ownerUsername: string | null; webAppUrl: string }): WishlistProfileReplyMarkup {
+  const label = ownerUsername ? `Открыть профиль @${ownerUsername} / Купить гифт` : "Открыть профиль / Купить гифт";
+
+  return {
+    inline_keyboard: [[{ text: label, web_app: { url: webAppUrl } }]]
+  };
 }
 
 export function createInlineWishlistResult({ wishlistLink, message, itemCount }: { wishlistLink: string; message: string; itemCount: number }): InlineWishlistResult {
@@ -146,7 +158,12 @@ export class BotService implements OnModuleInit {
           return;
         }
 
-        await ctx.reply(formatInlineWishlistMessage({ username: owner.username, items: owner.wishlistItems }));
+        await ctx.reply(formatInlineWishlistMessage({ username: owner.username, items: owner.wishlistItems }), {
+          reply_markup: createWishlistProfileReplyMarkup({
+            ownerUsername: owner.username,
+            webAppUrl: this.publicWishlistUrl(owner.id)
+          })
+        });
         return;
       }
 
