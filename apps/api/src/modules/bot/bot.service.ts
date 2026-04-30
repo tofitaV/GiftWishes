@@ -10,6 +10,19 @@ type InlineWishlistItem = {
   symbolName: string | null;
 };
 
+type InlineWishlistResult = {
+  type: "article";
+  id: string;
+  title: string;
+  description: string;
+  input_message_content: {
+    message_text: string;
+  };
+  reply_markup: {
+    inline_keyboard: [[{ text: string; url: string }]];
+  };
+};
+
 export function formatInlineWishlistMessage({ username, items }: { username: string | null; items: InlineWishlistItem[] }) {
   const displayName = username ? `@${username}` : "пользователя";
   if (items.length === 0) {
@@ -24,6 +37,21 @@ export function formatInlineWishlistMessage({ username, items }: { username: str
   });
 
   return [`Wishlist ${displayName}`, "", ...lines].join("\n");
+}
+
+export function createInlineWishlistResult({ wishlistLink, message, itemCount }: { wishlistLink: string; message: string; itemCount: number }): InlineWishlistResult {
+  return {
+    type: "article",
+    id: "wishlist",
+    title: "Показать свой wishlist",
+    description: itemCount > 0 ? `${itemCount} подарков в списке` : "Wishlist пока пуст",
+    input_message_content: {
+      message_text: message
+    },
+    reply_markup: {
+      inline_keyboard: [[{ text: itemCount > 0 ? "Открыть wishlist" : "Добавить подарки", url: wishlistLink }]]
+    }
+  };
 }
 
 @Injectable()
@@ -53,6 +81,10 @@ export class BotService implements OnModuleInit {
     }
 
     this.bot = new Telegraf(token);
+    this.bot.catch((error) => {
+      this.logger.error("Telegram bot update failed", error instanceof Error ? error.stack : String(error));
+    });
+
     this.bot.start(async (ctx) => {
       const from = ctx.from;
       if (!from?.username) {
@@ -100,16 +132,11 @@ export class BotService implements OnModuleInit {
 
       return ctx.answerInlineQuery(
         [
-          {
-            type: "article",
-            id: "wishlist",
-            title: "Показать свой wishlist",
-            description: user.wishlistItems.length > 0 ? `${user.wishlistItems.length} подарков в списке` : "Wishlist пока пуст",
-            input_message_content: {
-              message_text: message
-            },
-            reply_markup: { inline_keyboard: [[{ text: user.wishlistItems.length > 0 ? "Открыть wishlist" : "Добавить подарки", web_app: { url: wishlistLink } }]] }
-          }
+          createInlineWishlistResult({
+            wishlistLink,
+            message,
+            itemCount: user.wishlistItems.length
+          })
         ],
         { cache_time: 0 }
       );
