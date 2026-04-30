@@ -12,6 +12,7 @@ import {
   type GiftCatalogCollection,
   type GiftCollection
 } from "../lib/gift-picker-data";
+import { publicAssetHref } from "../lib/routing";
 
 export type GiftSelection = {
   collectionName: string;
@@ -105,11 +106,12 @@ function AttributeTile({
   onClick: () => void;
 }) {
   const color = type === "backdrop" ? backdropColors[item.name] ?? "#4b4c55" : null;
+  const imageSrc = publicAssetHref(item.imageUrl);
 
   return (
     <button className={`attribute-tile${selected ? " selected" : ""}`} type="button" onClick={onClick}>
       <div className="attribute-media" style={color ? { background: color } : undefined}>
-        {item.imageUrl ? <img src={item.imageUrl} alt="" loading="lazy" /> : <span>{type === "backdrop" ? "" : initials(item.name)}</span>}
+        {imageSrc ? <img src={imageSrc} alt="" loading="lazy" /> : <span>{type === "backdrop" ? "" : initials(item.name)}</span>}
       </div>
       <span>{item.name}</span>
       {item.rarityPermille !== null ? <small>{item.rarityPermille / 10}%</small> : null}
@@ -123,6 +125,7 @@ export function GiftPicker({ value, onChange }: Props) {
 
   const collections = useMemo(() => catalogCollections.map(collectionSummary), []);
   const selectedCollection = useMemo(() => findCatalogCollection(catalogCollections, value.collectionName), [value.collectionName]);
+  const selectedCollectionImageSrc = publicAssetHref(selectedCollection?.imageUrl ?? null);
   const filteredCollections = useMemo(() => filterBySearch(collections, query), [collections, query]);
   const currentItems =
     mode === "models" ? selectedCollection?.models ?? [] : mode === "backdrops" ? selectedCollection?.backdrops ?? [] : mode === "patterns" ? selectedCollection?.patterns ?? [] : [];
@@ -167,7 +170,7 @@ export function GiftPicker({ value, onChange }: Props) {
         </button>
         <button className="selected-gift-button" type="button" onClick={toggleCollections}>
           <span className="gift-chip-media">
-            {selectedCollection?.imageUrl ? <img src={selectedCollection.imageUrl} alt="" loading="lazy" /> : value.collectionName ? initials(value.collectionName) : "GW"}
+            {selectedCollectionImageSrc ? <img src={selectedCollectionImageSrc} alt="" loading="lazy" /> : value.collectionName ? initials(value.collectionName) : "GW"}
           </span>
           <span>{value.collectionName || "Выбрать подарок"}</span>
         </button>
@@ -204,12 +207,16 @@ export function GiftPicker({ value, onChange }: Props) {
 
           {mode === "collections" ? (
             <div className="collection-grid">
-              {filteredCollections.map((collection) => (
-                <button className={`collection-tile${value.collectionName === collection.name ? " selected" : ""}`} key={collection.id} type="button" onClick={() => selectCollection(collection)}>
-                  <div className="collection-media">{collection.imageUrl ? <img src={collection.imageUrl} alt="" loading="lazy" /> : <span>{initials(collection.name)}</span>}</div>
-                  <span>{collection.name}</span>
-                </button>
-              ))}
+              {filteredCollections.map((collection) => {
+                const collectionImageSrc = publicAssetHref(collection.imageUrl);
+
+                return (
+                  <button className={`collection-tile${value.collectionName === collection.name ? " selected" : ""}`} key={collection.id} type="button" onClick={() => selectCollection(collection)}>
+                    <div className="collection-media">{collectionImageSrc ? <img src={collectionImageSrc} alt="" loading="lazy" /> : <span>{initials(collection.name)}</span>}</div>
+                    <span>{collection.name}</span>
+                  </button>
+                );
+              })}
             </div>
           ) : (
             <div className="attribute-grid">

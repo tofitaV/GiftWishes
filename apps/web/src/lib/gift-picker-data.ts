@@ -42,6 +42,22 @@ function firstNumber(record: UnknownRecord, keys: string[]) {
   return null;
 }
 
+export function giftAssetSlug(name: string) {
+  return name.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+export function satelliteGiftAssetSlug(name: string) {
+  return name.replace(/[/\\?%*:|"'<>\u2018-\u201F ]/g, "").toLowerCase();
+}
+
+export function localGiftCollectionImagePath(collectionName: string) {
+  return `/gifts/collections/${giftAssetSlug(collectionName)}/thumb.webp`;
+}
+
+export function localGiftModelImagePath(collectionName: string, modelName: string) {
+  return `/gifts/models/${satelliteGiftAssetSlug(collectionName)}/${satelliteGiftAssetSlug(modelName)}.webp`;
+}
+
 export function normalizeCollections(input: unknown): GiftCollection[] {
   return (Array.isArray(input) ? input : []).flatMap((item) => {
     const record = asRecord(item);
@@ -84,7 +100,11 @@ export function normalizeCatalog(input: unknown): GiftCatalogCollection[] {
     return {
       ...normalized,
       telegramId: firstString(collection, ["telegramId"]),
-      models: normalizeAttributes(collection.models),
+      imageUrl: localGiftCollectionImagePath(normalized.name),
+      models: normalizeAttributes(collection.models).map((model) => ({
+        ...model,
+        imageUrl: localGiftModelImagePath(normalized.name, model.name)
+      })),
       backdrops: normalizeAttributes(collection.backdrops),
       patterns: normalizeAttributes(collection.patterns)
     };
@@ -111,4 +131,11 @@ export function filterBySearch<T extends { name: string }>(items: T[], query: st
   const normalizedQuery = query.trim().toLocaleLowerCase();
   if (!normalizedQuery) return items;
   return items.filter((item) => item.name.toLocaleLowerCase().includes(normalizedQuery));
+}
+
+export function findWishlistGiftImageUrl(collections: GiftCatalogCollection[], collectionName: string, modelName: string): string | null {
+  const collection = findCatalogCollection(collections, collectionName);
+  if (!collection) return null;
+
+  return collection.models.find((model) => model.name === modelName)?.imageUrl ?? collection.imageUrl;
 }

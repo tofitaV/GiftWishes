@@ -14,3 +14,11 @@ export function appHref(path: string, basePath = appBasePath()) {
   const withTrailingSlash = normalizedPath.endsWith("/") ? normalizedPath : `${normalizedPath}/`;
   return `${basePath}${withTrailingSlash}`;
 }
+
+export function publicAssetHref(path: string | null, basePath = appBasePath()) {
+  if (!path) return null;
+  if (/^https?:\/\//.test(path)) return path;
+
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${basePath}${normalizedPath}`;
+}

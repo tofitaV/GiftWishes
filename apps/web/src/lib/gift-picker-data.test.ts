@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { filterBySearch, findCatalogCollection, getAdjacentCatalogCollection, normalizeAttributes, normalizeCatalog, normalizeCollections } from "./gift-picker-data";
+import {
+  filterBySearch,
+  findCatalogCollection,
+  findWishlistGiftImageUrl,
+  getAdjacentCatalogCollection,
+  localGiftCollectionImagePath,
+  localGiftModelImagePath,
+  normalizeAttributes,
+  normalizeCatalog,
+  normalizeCollections
+} from "./gift-picker-data";
 
 describe("normalizeCollections", () => {
   it("keeps Satellite collection names and optional media/price fields", () => {
@@ -46,6 +56,12 @@ describe("filterBySearch", () => {
 });
 
 describe("normalizeCatalog", () => {
+  it("derives local collection and model image paths from names", () => {
+    expect(localGiftCollectionImagePath("Trapped Heart")).toBe("/gifts/collections/trappedheart/thumb.webp");
+    expect(localGiftModelImagePath("Big Year", "Cyberpunk")).toBe("/gifts/models/bigyear/cyberpunk.webp");
+    expect(localGiftModelImagePath("B-Day Candle", "Kaboom!")).toBe("/gifts/models/b-daycandle/kaboom!.webp");
+  });
+
   it("keeps collection details locally for frontend-only search and selection", () => {
     const catalog = normalizeCatalog({
       collections: [
@@ -63,13 +79,27 @@ describe("normalizeCatalog", () => {
     expect(findCatalogCollection(catalog, "Pool Float")).toEqual({
       id: "collection-1",
       name: "Pool Float",
-      imageUrl: null,
+      imageUrl: "/gifts/collections/poolfloat/thumb.webp",
       price: null,
       telegramId: "tg-1",
-      models: [{ id: "Luxury Yacht", name: "Luxury Yacht", imageUrl: null, rarityPermille: 5 }],
+      models: [{ id: "Luxury Yacht", name: "Luxury Yacht", imageUrl: "/gifts/models/poolfloat/luxuryyacht.webp", rarityPermille: 5 }],
       backdrops: [{ id: "Cobalt Blue", name: "Cobalt Blue", imageUrl: null, rarityPermille: 10 }],
       patterns: [{ id: "Paw Print", name: "Paw Print", imageUrl: null, rarityPermille: 1 }]
     });
+  });
+
+  it("uses the selected model image for wishlist cards and falls back to collection image", () => {
+    const catalog = normalizeCatalog({
+      collections: [
+        {
+          name: "Big Year",
+          models: [{ name: "Cyberpunk" }]
+        }
+      ]
+    });
+
+    expect(findWishlistGiftImageUrl(catalog, "Big Year", "Cyberpunk")).toBe("/gifts/models/bigyear/cyberpunk.webp");
+    expect(findWishlistGiftImageUrl(catalog, "Big Year", "Any Model")).toBe("/gifts/collections/bigyear/thumb.webp");
   });
 });
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { appHref, publicWishlistHref } from "./routing";
+import { appHref, publicAssetHref, publicWishlistHref } from "./routing";
 
 describe("publicWishlistHref", () => {
   it("builds a root query URL for GitHub Pages static hosting", () => {
@@ -14,5 +14,11 @@ describe("publicWishlistHref", () => {
 describe("appHref", () => {
   it("prefixes internal routes with the GitHub Pages base path", () => {
     expect(appHref("/wishlist", "/GiftWishes")).toBe("/GiftWishes/wishlist/");
+  });
+});
+
+describe("publicAssetHref", () => {
+  it("prefixes public asset paths with the GitHub Pages base path", () => {
+    expect(publicAssetHref("/gifts/collections/trappedheart/thumb.webp", "/GiftWishes")).toBe("/GiftWishes/gifts/collections/trappedheart/thumb.webp");
   });
 });
