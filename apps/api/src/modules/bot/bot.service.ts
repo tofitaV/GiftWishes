@@ -3,6 +3,29 @@ import { ConfigService } from "@nestjs/config";
 import { Telegraf } from "telegraf";
 import { PrismaService } from "../prisma/prisma.service.js";
 
+type InlineWishlistItem = {
+  collectionName: string;
+  modelName: string;
+  backdropName: string | null;
+  symbolName: string | null;
+};
+
+export function formatInlineWishlistMessage({ username, items }: { username: string | null; items: InlineWishlistItem[] }) {
+  const displayName = username ? `@${username}` : "пользователя";
+  if (items.length === 0) {
+    return `Wishlist ${displayName} пока пуст`;
+  }
+
+  const lines = items.flatMap((item, index) => {
+    const itemLines = [`${index + 1}. ${item.collectionName} - ${item.modelName}`];
+    if (item.backdropName) itemLines.push(`   Фон: ${item.backdropName}`);
+    if (item.symbolName) itemLines.push(`   Узор: ${item.symbolName}`);
+    return itemLines;
+  });
+
+  return [`Wishlist ${displayName}`, "", ...lines].join("\n");
+}
+
 @Injectable()
 export class BotService implements OnModuleInit {
   private readonly logger = new Logger(BotService.name);
@@ -63,20 +86,29 @@ export class BotService implements OnModuleInit {
 
     this.bot.on("inline_query", async (ctx) => {
       const from = ctx.from;
-      const user = await this.prisma.user.findUnique({ where: { telegramId: String(from.id) } });
+      const user = await this.prisma.user.findUnique({
+        where: { telegramId: String(from.id) },
+        include: { wishlistItems: { orderBy: { createdAt: "desc" } } }
+      });
       if (!user) return ctx.answerInlineQuery([], { cache_time: 0 });
 
       const wishlistLink = this.publicWishlistUrl(user.id);
+      const message = formatInlineWishlistMessage({
+        username: user.username,
+        items: user.wishlistItems
+      });
+
       return ctx.answerInlineQuery(
         [
           {
             type: "article",
             id: "wishlist",
-            title: "Show Gift Wishes",
+            title: "Показать свой wishlist",
+            description: user.wishlistItems.length > 0 ? `${user.wishlistItems.length} подарков в списке` : "Wishlist пока пуст",
             input_message_content: {
-              message_text: `Wishlist @${user.username}: ${wishlistLink}`
+              message_text: message
             },
-            reply_markup: { inline_keyboard: [[{ text: "Open wishlist", web_app: { url: wishlistLink } }]] }
+            reply_markup: { inline_keyboard: [[{ text: user.wishlistItems.length > 0 ? "Открыть wishlist" : "Добавить подарки", web_app: { url: wishlistLink } }]] }
           }
         ],
         { cache_time: 0 }
