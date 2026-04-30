@@ -63,6 +63,30 @@ describe("authenticateWithTelegram", () => {
     expect(result).toEqual({ token: "existing-token" });
   });
 
+  it("can force refresh a stored JWT after the API rejects it", async () => {
+    const storage = new Map<string, string>([["gift-wishes-token", "expired-token"]]);
+    const fetcher = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ token: "fresh-token", user: { id: "u1" } }),
+      text: async () => ""
+    }));
+
+    const result = await authenticateWithTelegram({
+      initData: "query_id=1&hash=abc",
+      apiBase: "https://api.example.com/api",
+      fetcher,
+      forceRefresh: true,
+      storage: {
+        getItem: (key) => storage.get(key) ?? null,
+        setItem: (key, value) => storage.set(key, value)
+      }
+    });
+
+    expect(fetcher).toHaveBeenCalledOnce();
+    expect(storage.get("gift-wishes-token")).toBe("fresh-token");
+    expect(result).toEqual({ token: "fresh-token", user: { id: "u1" } });
+  });
+
   it("logs failed auth requests with status and response body", async () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const fetcher = vi.fn(async () => ({

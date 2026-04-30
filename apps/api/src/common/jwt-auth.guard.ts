@@ -21,7 +21,12 @@ export class JwtAuthGuard implements CanActivate {
     const token = authorization?.startsWith("Bearer ") ? authorization.slice(7) : null;
     if (!token) throw new UnauthorizedException();
 
-    const payload = await this.jwt.verifyAsync<JwtPayload>(token, { secret: this.config.getOrThrow<string>("JWT_SECRET") });
+    let payload: JwtPayload;
+    try {
+      payload = await this.jwt.verifyAsync<JwtPayload>(token, { secret: this.config.getOrThrow<string>("JWT_SECRET") });
+    } catch {
+      throw new UnauthorizedException();
+    }
     if (typeof payload.sub !== "string" || typeof payload.telegramId !== "string") {
       throw new UnauthorizedException();
     }

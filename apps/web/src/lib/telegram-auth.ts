@@ -23,6 +23,7 @@ type AuthOptions = {
   initData: string | null;
   apiBase?: string;
   fetcher?: AuthFetcher;
+  forceRefresh?: boolean;
   storage?: TokenStorage;
 };
 
@@ -40,10 +41,11 @@ export async function authenticateWithTelegram({
   initData,
   apiBase = API_BASE,
   fetcher = fetch as AuthFetcher,
+  forceRefresh = false,
   storage = window.localStorage
 }: AuthOptions) {
   const existingToken = storage.getItem(AUTH_TOKEN_STORAGE_KEY);
-  if (existingToken) {
+  if (existingToken && !forceRefresh) {
     return { token: existingToken };
   }
 

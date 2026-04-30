@@ -46,4 +46,20 @@ describe("JwtAuthGuard", () => {
 
     await expect(guard.canActivate(executionContextFor(request))).rejects.toBeInstanceOf(UnauthorizedException);
   });
+
+  it("rejects expired or invalid JWTs without leaking a 500", async () => {
+    const request: TestRequest = { headers: { authorization: "Bearer expired-token" } };
+    const guard = new JwtAuthGuard(
+      {
+        verifyAsync: vi.fn(async () => {
+          throw new Error("jwt expired");
+        })
+      } as never,
+      {
+        getOrThrow: vi.fn(() => "secret")
+      } as never
+    );
+
+    await expect(guard.canActivate(executionContextFor(request))).rejects.toBeInstanceOf(UnauthorizedException);
+  });
 });

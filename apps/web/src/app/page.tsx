@@ -33,6 +33,15 @@ export default function HomePage() {
     try {
       setWishlist(await api<MineResponse>("/wishlist/mine"));
     } catch (err) {
+      if (err instanceof Error && err.message.includes("failed 401")) {
+        const refreshed = await authenticateWithTelegram({ initData: getTelegramInitData(), forceRefresh: true });
+        if (refreshed) {
+          setAuthReady(true);
+          setWishlist(await api<MineResponse>("/wishlist/mine"));
+          return;
+        }
+      }
+
       setError(err instanceof Error ? err.message : "Не удалось загрузить wishlist");
     }
   }
