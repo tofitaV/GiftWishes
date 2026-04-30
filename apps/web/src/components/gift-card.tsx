@@ -1,4 +1,5 @@
 import { Gift, Trash2 } from "lucide-react";
+import { useState } from "react";
 import type { WishlistItemDto } from "@gift-wishes/shared";
 import giftCatalog from "../data/gift-catalog.json";
 import { findWishlistGiftImageUrl, normalizeCatalog } from "../lib/gift-picker-data";
@@ -15,11 +16,12 @@ const catalogCollections = normalizeCatalog(giftCatalog);
 
 export function GiftCard({ item, canDelete, onDelete, onBuy }: Props) {
   const imageSrc = publicAssetHref(findWishlistGiftImageUrl(catalogCollections, item.collectionName, item.modelName));
+  const [imageFailed, setImageFailed] = useState(false);
 
   return (
     <article className="card">
       <div className="gift-preview">
-        {imageSrc ? <img src={imageSrc} alt="" loading="lazy" /> : <Gift size={34} />}
+        {imageSrc && !imageFailed ? <img src={imageSrc} alt="" loading="lazy" onError={() => setImageFailed(true)} /> : <Gift size={34} />}
       </div>
       <h2 className="card-title">{item.modelName}</h2>
       <div className="muted">{item.collectionName}</div>

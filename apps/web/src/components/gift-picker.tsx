@@ -94,6 +94,16 @@ function collectionSummary(collection: GiftCatalogCollection): GiftCollection {
   };
 }
 
+function GiftImage({ src, fallback, className }: { src: string | null; fallback: string; className?: string }) {
+  const [failed, setFailed] = useState(false);
+
+  if (!src || failed) {
+    return <span>{fallback}</span>;
+  }
+
+  return <img className={className} src={src} alt="" loading="lazy" onError={() => setFailed(true)} />;
+}
+
 function AttributeTile({
   item,
   selected,
@@ -111,7 +121,7 @@ function AttributeTile({
   return (
     <button className={`attribute-tile${selected ? " selected" : ""}`} type="button" onClick={onClick}>
       <div className="attribute-media" style={color ? { background: color } : undefined}>
-        {imageSrc ? <img src={imageSrc} alt="" loading="lazy" /> : <span>{type === "backdrop" ? "" : initials(item.name)}</span>}
+        <GiftImage src={imageSrc} fallback={type === "backdrop" ? "" : initials(item.name)} />
       </div>
       <span>{item.name}</span>
       {item.rarityPermille !== null ? <small>{item.rarityPermille / 10}%</small> : null}
@@ -170,7 +180,7 @@ export function GiftPicker({ value, onChange }: Props) {
         </button>
         <button className="selected-gift-button" type="button" onClick={toggleCollections}>
           <span className="gift-chip-media">
-            {selectedCollectionImageSrc ? <img src={selectedCollectionImageSrc} alt="" loading="lazy" /> : value.collectionName ? initials(value.collectionName) : "GW"}
+            <GiftImage src={selectedCollectionImageSrc} fallback={value.collectionName ? initials(value.collectionName) : "GW"} />
           </span>
           <span>{value.collectionName || "Выбрать подарок"}</span>
         </button>
@@ -212,7 +222,9 @@ export function GiftPicker({ value, onChange }: Props) {
 
                 return (
                   <button className={`collection-tile${value.collectionName === collection.name ? " selected" : ""}`} key={collection.id} type="button" onClick={() => selectCollection(collection)}>
-                    <div className="collection-media">{collectionImageSrc ? <img src={collectionImageSrc} alt="" loading="lazy" /> : <span>{initials(collection.name)}</span>}</div>
+                    <div className="collection-media">
+                      <GiftImage src={collectionImageSrc} fallback={initials(collection.name)} />
+                    </div>
                     <span>{collection.name}</span>
                   </button>
                 );
