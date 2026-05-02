@@ -45,10 +45,9 @@ export function formatInlineWishlistMessage({ username, items }: { username: str
   }
 
   const lines = items.flatMap((item, index) => {
-    const itemLines = [`${index + 1}. ${item.collectionName} - ${item.modelName}`];
+    const itemLines = [`${index + 1}. ${formatGiftTitle(item)}`];
     if (item.backdropName) itemLines.push(`   Фон: ${item.backdropName}`);
     if (item.symbolName) itemLines.push(`   Узор: ${item.symbolName}`);
-    if (item.sourceUrl) itemLines.push(`   Ссылка: ${item.sourceUrl}`);
     return itemLines;
   });
 
@@ -61,14 +60,23 @@ export function formatOwnWishlistMessage({ items }: { items: InlineWishlistItem[
   }
 
   const lines = items.flatMap((item, index) => {
-    const itemLines = [`${index + 1}. ${item.collectionName} - ${item.modelName}`];
+    const itemLines = [`${index + 1}. ${formatGiftTitle(item)}`];
     if (item.backdropName) itemLines.push(`   Фон: ${item.backdropName}`);
     if (item.symbolName) itemLines.push(`   Узор: ${item.symbolName}`);
-    if (item.sourceUrl) itemLines.push(`   Ссылка: ${item.sourceUrl}`);
     return itemLines;
   });
 
   return ["Твой wishlist", "", ...lines].join("\n");
+}
+
+function formatGiftTitle(item: Pick<InlineWishlistItem, "collectionName" | "modelName" | "sourceUrl">) {
+  const title = `${escapeTelegramHtml(item.collectionName)} - ${escapeTelegramHtml(item.modelName)}`;
+  if (!item.sourceUrl) return title;
+  return `<a href="${escapeTelegramHtml(item.sourceUrl)}">${title}</a>`;
+}
+
+function escapeTelegramHtml(value: string) {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 export function parseWishlistStartPayload(payload: string | undefined) {
@@ -238,6 +246,7 @@ export class BotService implements OnModuleInit {
         }
 
         await ctx.reply(formatInlineWishlistMessage({ username: owner.username, items: owner.wishlistItems }), {
+          parse_mode: "HTML",
           reply_markup: createWishlistProfileReplyMarkup({
             ownerUsername: owner.username,
             webAppUrl: this.publicWishlistUrl(owner.id)
@@ -293,6 +302,7 @@ export class BotService implements OnModuleInit {
         if (isOwnWishlistCommand(text)) {
           const wishlist = await this.wishlist.getMine(user.id);
           await ctx.reply(formatOwnWishlistMessage({ items: wishlist.items }), {
+            parse_mode: "HTML",
             reply_markup: createWishlistGiftLinksReplyMarkup({ items: wishlist.items })
           });
           return;
