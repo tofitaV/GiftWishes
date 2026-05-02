@@ -3,7 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import { Telegraf } from "telegraf";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { WishlistService } from "../wishlist/wishlist.service.js";
-import { formatGiftModelEmojiHtml } from "./gift-model-emojis.js";
+import { lookupGiftModelEmoji } from "./gift-model-emojis.js";
 import { addTelegramNftGiftFromMessage, type TelegramNftGift } from "./telegram-nft.js";
 
 type InlineWishlistItem = {
@@ -14,6 +14,25 @@ type InlineWishlistItem = {
   sourceUrl?: string | null;
 };
 
+type TelegramMessageEntity =
+  | {
+      type: "custom_emoji";
+      offset: number;
+      length: number;
+      custom_emoji_id: string;
+    }
+  | {
+      type: "text_link";
+      offset: number;
+      length: number;
+      url: string;
+    };
+
+type FormattedTelegramMessage = {
+  text: string;
+  entities: TelegramMessageEntity[];
+};
+
 type InlineWishlistResult = {
   type: "article";
   id: string;
@@ -21,7 +40,7 @@ type InlineWishlistResult = {
   description: string;
   input_message_content: {
     message_text: string;
-    parse_mode: "HTML";
+    entities?: TelegramMessageEntity[];
   };
   reply_markup: {
     inline_keyboard: [[{ text: string; url: string }]];
@@ -41,45 +60,101 @@ const WISHLIST_PROFILE_START_PREFIX = "profile-";
 const DEFAULT_BOT_USERNAME = "giftwishes_bot";
 
 export function formatInlineWishlistMessage({ username, items }: { username: string | null; items: InlineWishlistItem[] }) {
+  return formatInlineWishlistReply({ username, items }).text;
+}
+
+export function formatInlineWishlistReply({ username, items }: { username: string | null; items: InlineWishlistItem[] }): FormattedTelegramMessage {
   const displayName = username ? `@${username}` : "пользователя";
-  if (items.length === 0) {
-    return `Wishlist ${displayName} пока пуст`;
-  }
-
-  const lines = items.flatMap((item, index) => {
-    const itemLines = [`${index + 1}. ${formatGiftTitle(item)}`];
-    if (item.backdropName) itemLines.push(`   Фон: ${item.backdropName}`);
-    if (item.symbolName) itemLines.push(`   Узор: ${item.symbolName}`);
-    return itemLines;
+  return formatWishlistReply({
+    header: `Wishlist ${displayName}`,
+    emptyMessage: `Wishlist ${displayName} пока пуст`,
+    items
   });
-
-  return [`Wishlist ${displayName}`, "", ...lines].join("\n");
 }
 
 export function formatOwnWishlistMessage({ items }: { items: InlineWishlistItem[] }) {
+  return formatOwnWishlistReply({ items }).text;
+}
+
+export function formatOwnWishlistReply({ items }: { items: InlineWishlistItem[] }): FormattedTelegramMessage {
+  return formatWishlistReply({
+    header: "Твой wishlist",
+    emptyMessage: "Твой wishlist пока пуст",
+    items
+  });
+}
+
+function formatWishlistReply({ header, emptyMessage, items }: { header: string; emptyMessage: string; items: InlineWishlistItem[] }): FormattedTelegramMessage {
+  const builder = createTelegramMessageBuilder();
   if (items.length === 0) {
-    return "Твой wishlist пока пуст";
+    builder.append(emptyMessage);
+    return builder.build();
   }
 
-  const lines = items.flatMap((item, index) => {
-    const itemLines = [`${index + 1}. ${formatGiftTitle(item)}`];
-    if (item.backdropName) itemLines.push(`   Фон: ${item.backdropName}`);
-    if (item.symbolName) itemLines.push(`   Узор: ${item.symbolName}`);
-    return itemLines;
+  builder.append(header);
+  builder.append("\n\n");
+  items.forEach((item, index) => {
+    if (index > 0) builder.append("\n");
+
+    builder.append(`${index + 1}. `);
+    appendGiftTitle(builder, item);
+    if (item.backdropName) builder.append(`\n   Фон: ${item.backdropName}`);
+    if (item.symbolName) builder.append(`\n   Узор: ${item.symbolName}`);
   });
 
-  return ["Твой wishlist", "", ...lines].join("\n");
+  return builder.build();
 }
 
-function formatGiftTitle(item: Pick<InlineWishlistItem, "collectionName" | "modelName" | "sourceUrl">) {
-  const title = `${escapeTelegramHtml(item.collectionName)} - ${escapeTelegramHtml(item.modelName)}`;
-  const linkedTitle = item.sourceUrl ? `<a href="${escapeTelegramHtml(item.sourceUrl)}">${title}</a>` : title;
-  const emoji = formatGiftModelEmojiHtml(item.collectionName, item.modelName);
-  return emoji ? `${emoji} ${linkedTitle}` : linkedTitle;
+function appendGiftTitle(builder: TelegramMessageBuilder, item: Pick<InlineWishlistItem, "collectionName" | "modelName" | "sourceUrl">) {
+  const emoji = lookupGiftModelEmoji(item.collectionName, item.modelName);
+  if (emoji) {
+    const offset = builder.length;
+    builder.append(emoji.fallback);
+    builder.addEntity({
+      type: "custom_emoji",
+      offset,
+      length: emoji.fallback.length,
+      custom_emoji_id: emoji.emojiId
+    });
+    builder.append(" ");
+  }
+
+  const title = `${item.collectionName} - ${item.modelName}`;
+  const offset = builder.length;
+  builder.append(title);
+  if (item.sourceUrl) {
+    builder.addEntity({
+      type: "text_link",
+      offset,
+      length: title.length,
+      url: item.sourceUrl
+    });
+  }
 }
 
-function escapeTelegramHtml(value: string) {
-  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+type TelegramMessageBuilder = ReturnType<typeof createTelegramMessageBuilder>;
+
+function createTelegramMessageBuilder() {
+  let text = "";
+  const entities: TelegramMessageEntity[] = [];
+  return {
+    get length() {
+      return text.length;
+    },
+    append(value: string) {
+      text += value;
+    },
+    addEntity(entity: TelegramMessageEntity) {
+      entities.push(entity);
+    },
+    build(): FormattedTelegramMessage {
+      return { text, entities };
+    }
+  };
+}
+
+function messageEntitiesOption(message: FormattedTelegramMessage) {
+  return message.entities.length > 0 ? message.entities : undefined;
 }
 
 export function parseWishlistStartPayload(payload: string | undefined) {
@@ -133,15 +208,15 @@ export function createWishlistGiftLinksReplyMarkup({ items }: { items: InlineWis
   return buttons.length > 0 ? { inline_keyboard: buttons } : undefined;
 }
 
-export function createInlineWishlistResult({ wishlistLink, message, itemCount }: { wishlistLink: string; message: string; itemCount: number }): InlineWishlistResult {
+export function createInlineWishlistResult({ wishlistLink, message, itemCount }: { wishlistLink: string; message: FormattedTelegramMessage; itemCount: number }): InlineWishlistResult {
   return {
     type: "article",
     id: "wishlist",
     title: "Показать свой wishlist",
     description: itemCount > 0 ? `${itemCount} подарков в списке` : "Wishlist пока пуст",
     input_message_content: {
-      message_text: message,
-      parse_mode: "HTML"
+      message_text: message.text,
+      entities: messageEntitiesOption(message)
     },
     reply_markup: {
       inline_keyboard: [[{ text: itemCount > 0 ? "Открыть wishlist" : "Добавить подарки", url: wishlistLink }]]
@@ -249,8 +324,9 @@ export class BotService implements OnModuleInit {
           return;
         }
 
-        await ctx.reply(formatInlineWishlistMessage({ username: owner.username, items: owner.wishlistItems }), {
-          parse_mode: "HTML",
+        const reply = formatInlineWishlistReply({ username: owner.username, items: owner.wishlistItems });
+        await ctx.reply(reply.text, {
+          entities: messageEntitiesOption(reply),
           reply_markup: createWishlistProfileReplyMarkup({
             ownerUsername: owner.username,
             webAppUrl: this.publicWishlistUrl(owner.id)
@@ -278,7 +354,7 @@ export class BotService implements OnModuleInit {
       if (!user) return ctx.answerInlineQuery([], { cache_time: 0 });
 
       const wishlistLink = this.botWishlistUrl(user.id);
-      const message = formatInlineWishlistMessage({
+      const message = formatInlineWishlistReply({
         username: user.username,
         items: user.wishlistItems
       });
@@ -305,8 +381,9 @@ export class BotService implements OnModuleInit {
         const user = await this.upsertTelegramUser(from);
         if (isOwnWishlistCommand(text)) {
           const wishlist = await this.wishlist.getMine(user.id);
-          await ctx.reply(formatOwnWishlistMessage({ items: wishlist.items }), {
-            parse_mode: "HTML",
+          const reply = formatOwnWishlistReply({ items: wishlist.items });
+          await ctx.reply(reply.text, {
+            entities: messageEntitiesOption(reply),
             reply_markup: createWishlistGiftLinksReplyMarkup({ items: wishlist.items })
           });
           return;

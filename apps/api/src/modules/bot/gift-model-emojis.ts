@@ -13,13 +13,6 @@ export function lookupGiftModelEmoji(collectionName: string, modelName: string) 
   return giftModelEmojiByKey.get(createGiftModelEmojiKey(collectionName, modelName)) ?? null;
 }
 
-export function formatGiftModelEmojiHtml(collectionName: string, modelName: string) {
-  const entry = lookupGiftModelEmoji(collectionName, modelName);
-  if (!entry) return "";
-
-  return `<tg-emoji emoji-id="${entry.emojiId}">${escapeTelegramHtml(entry.fallback)}</tg-emoji>`;
-}
-
 export function parseGiftModelEmojiPosts(html: string): GiftModelEmoji[] {
   const entries: GiftModelEmoji[] = [];
   const messagePattern = /<div class="tgme_widget_message_text js-message_text"[^>]*>([\s\S]*?)<\/div>/g;
@@ -73,8 +66,4 @@ function decodeHtml(value: string) {
     .replace(/&gt;/g, ">")
     .replace(/&amp;/g, "&")
     .trim();
-}
-
-function escapeTelegramHtml(value: string) {
-  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }

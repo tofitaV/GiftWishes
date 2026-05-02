@@ -5,7 +5,9 @@ import {
   createWishlistGiftLinksReplyMarkup,
   createWishlistProfileReplyMarkup,
   formatInlineWishlistMessage,
+  formatInlineWishlistReply,
   formatOwnWishlistMessage,
+  formatOwnWishlistReply,
   isOwnWishlistCommand,
   parseWishlistStartPayload
 } from "./bot.service.js";
@@ -30,7 +32,7 @@ describe("formatInlineWishlistMessage", () => {
           }
         ]
       })
-    ).toBe('Wishlist @alice\n\n1. <tg-emoji emoji-id="5269410807556370096">🎁</tg-emoji> Big Year - Cyberpunk\n   Фон: Cobalt Blue\n   Узор: Star\n2. Trapped Heart - Ruby');
+    ).toBe("Wishlist @alice\n\n1. 🎁 Big Year - Cyberpunk\n   Фон: Cobalt Blue\n   Узор: Star\n2. Trapped Heart - Ruby");
   });
 
   it("returns an empty wishlist message when there are no gifts", () => {
@@ -51,15 +53,46 @@ describe("formatInlineWishlistMessage", () => {
           }
         ]
       })
-    ).toBe(
-      'Wishlist @alice\n\n1. <tg-emoji emoji-id="6001558562357123088">💩</tg-emoji> <a href="https://t.me/nft/HappyBrownie-192207">Happy Brownie - Solid Waste</a>\n   Фон: Burgundy\n   Узор: Mafdet'
-    );
+    ).toBe("Wishlist @alice\n\n1. 💩 Happy Brownie - Solid Waste\n   Фон: Burgundy\n   Узор: Mafdet");
+  });
+
+  it("uses explicit custom emoji and text link entities for inline wishlist messages", () => {
+    expect(
+      formatInlineWishlistReply({
+        username: "alice",
+        items: [
+          {
+            collectionName: "Happy Brownie",
+            modelName: "Solid Waste",
+            backdropName: "Burgundy",
+            symbolName: "Mafdet",
+            sourceUrl: "https://t.me/nft/HappyBrownie-192207"
+          }
+        ]
+      })
+    ).toEqual({
+      text: "Wishlist @alice\n\n1. 💩 Happy Brownie - Solid Waste\n   Фон: Burgundy\n   Узор: Mafdet",
+      entities: [
+        {
+          type: "custom_emoji",
+          offset: 20,
+          length: 2,
+          custom_emoji_id: "6001558562357123088"
+        },
+        {
+          type: "text_link",
+          offset: 23,
+          length: 27,
+          url: "https://t.me/nft/HappyBrownie-192207"
+        }
+      ]
+    });
   });
 
   it("uses a Mini App deep link button in inline results because Telegram rejects web_app buttons there", () => {
     const result = createInlineWishlistResult({
       wishlistLink: "https://t.me/giftwishes_bot?startapp=profile-user-id",
-      message: "Wishlist @alice",
+      message: { text: "Wishlist @alice", entities: [] },
       itemCount: 1
     });
 
@@ -67,7 +100,7 @@ describe("formatInlineWishlistMessage", () => {
       text: "Открыть wishlist",
       url: "https://t.me/giftwishes_bot?startapp=profile-user-id"
     });
-    expect(result.input_message_content.parse_mode).toBe("HTML");
+    expect(result.input_message_content).toEqual({ message_text: "Wishlist @alice", entities: undefined });
     expect(JSON.stringify(result)).not.toContain("web_app");
   });
 
@@ -119,7 +152,7 @@ describe("formatOwnWishlistMessage", () => {
           }
         ]
       })
-    ).toBe('Твой wishlist\n\n1. <tg-emoji emoji-id="5453927296991792582">🏅</tg-emoji> <a href="https://t.me/nft/VictoryMedal-33886">Victory Medal - Bronze</a>\n   Фон: Steel Grey\n   Узор: Shield');
+    ).toBe("Твой wishlist\n\n1. 🏅 Victory Medal - Bronze\n   Фон: Steel Grey\n   Узор: Shield");
   });
 
   it("returns an empty message when the sender has no gifts", () => {
@@ -138,9 +171,39 @@ describe("formatOwnWishlistMessage", () => {
           }
         ]
       })
-    ).toBe(
-      "\u0422\u0432\u043E\u0439 wishlist\n\n1. <tg-emoji emoji-id=\"5456658853242365136\">\uD83C\uDF81</tg-emoji> <a href=\"https://t.me/nft/PlushPepe-123\">Plush Pepe - Raphael</a>\n   \u0424\u043E\u043D: Black"
-    );
+    ).toBe("\u0422\u0432\u043E\u0439 wishlist\n\n1. \uD83C\uDF81 Plush Pepe - Raphael\n   \u0424\u043E\u043D: Black");
+  });
+
+  it("uses explicit custom emoji entities instead of HTML tags for the sender's wishlist", () => {
+    expect(
+      formatOwnWishlistReply({
+        items: [
+          {
+            collectionName: "Plush Pepe",
+            modelName: "Raphael",
+            backdropName: "Black",
+            symbolName: null,
+            sourceUrl: "https://t.me/nft/PlushPepe-123"
+          }
+        ]
+      })
+    ).toEqual({
+      text: "Твой wishlist\n\n1. 🎁 Plush Pepe - Raphael\n   Фон: Black",
+      entities: [
+        {
+          type: "custom_emoji",
+          offset: 18,
+          length: 2,
+          custom_emoji_id: "5456658853242365136"
+        },
+        {
+          type: "text_link",
+          offset: 21,
+          length: 20,
+          url: "https://t.me/nft/PlushPepe-123"
+        }
+      ]
+    });
   });
 });
 
