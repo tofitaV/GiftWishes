@@ -48,6 +48,7 @@ export function formatInlineWishlistMessage({ username, items }: { username: str
     const itemLines = [`${index + 1}. ${item.collectionName} - ${item.modelName}`];
     if (item.backdropName) itemLines.push(`   Фон: ${item.backdropName}`);
     if (item.symbolName) itemLines.push(`   Узор: ${item.symbolName}`);
+    if (item.sourceUrl) itemLines.push(`   Ссылка: ${item.sourceUrl}`);
     return itemLines;
   });
 
