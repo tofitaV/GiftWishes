@@ -28,6 +28,7 @@ type WishlistProfileReplyMarkup = {
 };
 
 const WISHLIST_START_PREFIX = "wishlist_";
+const WISHLIST_PROFILE_START_PREFIX = "profile-";
 const DEFAULT_BOT_USERNAME = "giftwishes_bot";
 
 export function formatInlineWishlistMessage({ username, items }: { username: string | null; items: InlineWishlistItem[] }) {
@@ -56,7 +57,7 @@ export function parseWishlistStartPayload(payload: string | undefined) {
 
 export function createBotWishlistDeepLink({ botUsername, ownerUserId }: { botUsername: string; ownerUserId: string }) {
   const username = botUsername.replace(/^@/, "");
-  return `https://t.me/${username}?start=${WISHLIST_START_PREFIX}${ownerUserId}`;
+  return `https://t.me/${username}?startapp=${WISHLIST_PROFILE_START_PREFIX}${ownerUserId}`;
 }
 
 export function createWishlistProfileReplyMarkup({ ownerUsername, webAppUrl }: { ownerUsername: string | null; webAppUrl: string }): WishlistProfileReplyMarkup {

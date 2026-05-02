@@ -10,6 +10,9 @@ type TelegramWindow = Partial<Window> & {
   Telegram?: {
     WebApp?: {
       initData?: string;
+      initDataUnsafe?: {
+        start_param?: string;
+      };
       ready?: () => void;
       expand?: () => void;
     };
@@ -30,6 +33,11 @@ type AuthOptions = {
 export function getTelegramInitData(win: TelegramWindow = window as TelegramWindow) {
   const initData = win.Telegram?.WebApp?.initData;
   return initData && initData.length > 0 ? initData : null;
+}
+
+export function getTelegramStartParam(win: TelegramWindow = window as TelegramWindow) {
+  const startParam = win.Telegram?.WebApp?.initDataUnsafe?.start_param ?? new URLSearchParams(win.location?.search ?? "").get("tgWebAppStartParam");
+  return startParam && startParam.length > 0 ? startParam : null;
 }
 
 export function prepareTelegramWebApp(win: TelegramWindow = window as TelegramWindow) {

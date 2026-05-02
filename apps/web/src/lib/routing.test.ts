@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { appHref, publicAssetHref, publicWishlistHref } from "./routing";
+import { appHref, parsePublicWishlistStartParam, publicAssetHref, publicWishlistHref } from "./routing";
 
 describe("publicWishlistHref", () => {
   it("builds a root query URL for GitHub Pages static hosting", () => {
@@ -8,6 +8,17 @@ describe("publicWishlistHref", () => {
 
   it("uses root when no base path is configured", () => {
     expect(publicWishlistHref("abc", "")).toBe("/?owner=abc");
+  });
+});
+
+describe("parsePublicWishlistStartParam", () => {
+  it("reads the wishlist owner from a Telegram Mini App profile payload", () => {
+    expect(parsePublicWishlistStartParam("profile-user-id")).toBe("user-id");
+  });
+
+  it("ignores unsupported Telegram Mini App payloads", () => {
+    expect(parsePublicWishlistStartParam("wishlist_user-id")).toBeNull();
+    expect(parsePublicWishlistStartParam("profile-")).toBeNull();
   });
 });
 

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { authenticateWithTelegram, getTelegramInitData } from "./telegram-auth";
+import { authenticateWithTelegram, getTelegramInitData, getTelegramStartParam } from "./telegram-auth";
 
 describe("getTelegramInitData", () => {
   it("reads Telegram WebApp initData from the browser window", () => {
@@ -12,6 +12,28 @@ describe("getTelegramInitData", () => {
 
   it("returns null outside Telegram", () => {
     expect(getTelegramInitData({})).toBeNull();
+  });
+});
+
+describe("getTelegramStartParam", () => {
+  it("reads the Telegram Mini App start param from initDataUnsafe", () => {
+    expect(
+      getTelegramStartParam({
+        Telegram: { WebApp: { initDataUnsafe: { start_param: "profile-user-id" } } }
+      })
+    ).toBe("profile-user-id");
+  });
+
+  it("falls back to the tgWebAppStartParam URL parameter", () => {
+    expect(
+      getTelegramStartParam({
+        location: { search: "?tgWebAppStartParam=profile-user-id" } as Location
+      })
+    ).toBe("profile-user-id");
+  });
+
+  it("returns null when Telegram did not provide a start param", () => {
+    expect(getTelegramStartParam({})).toBeNull();
   });
 });
 

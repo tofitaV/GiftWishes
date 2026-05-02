@@ -8,7 +8,8 @@ import { api } from "../lib/api";
 import { GiftCard } from "../components/gift-card";
 import { PublicWishlistClient } from "../components/public-wishlist-client";
 // import { appHref } from "../lib/routing";
-import { authenticateWithTelegram, getTelegramInitData, prepareTelegramWebApp } from "../lib/telegram-auth";
+import { parsePublicWishlistStartParam } from "../lib/routing";
+import { authenticateWithTelegram, getTelegramInitData, getTelegramStartParam, prepareTelegramWebApp } from "../lib/telegram-auth";
 
 type MineResponse = {
   limit: number;
@@ -48,7 +49,7 @@ export default function HomePage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const owner = params.get("owner");
+    const owner = params.get("owner") ?? parsePublicWishlistStartParam(getTelegramStartParam());
     setOwnerId(owner);
 
     if (owner) {
