@@ -31,7 +31,7 @@ export class WishlistService {
     };
   }
 
-  async create(userId: string, input: { collectionName: string; modelName: string; backdropName?: string; symbolName?: string }) {
+  async create(userId: string, input: { collectionName: string; modelName: string; backdropName?: string; symbolName?: string; sourceUrl?: string }) {
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
     const usedSlots = await this.prisma.wishlistItem.count({ where: { ownerUserId: userId } });
     const allowedSlots = FREE_WISHLIST_SLOTS + user.purchasedWishlistSlots;
@@ -46,7 +46,8 @@ export class WishlistService {
         collectionName: input.collectionName,
         modelName: input.modelName,
         backdropName: input.backdropName || null,
-        symbolName: input.symbolName || null
+        symbolName: input.symbolName || null,
+        sourceUrl: input.sourceUrl || null
       }
     });
   }
@@ -58,4 +59,3 @@ export class WishlistService {
     return { ok: true };
   }
 }
-

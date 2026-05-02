@@ -16,6 +16,7 @@ export type WishlistItemDto = {
   modelName: string;
   backdropName: string | null;
   symbolName: string | null;
+  sourceUrl: string | null;
   createdAt: string;
 };
 
@@ -53,4 +54,3 @@ export function tonToNanoString(ton: number): string {
 export function nanoStringToTon(nano: string): number {
   return Number(BigInt(nano)) / Number(NANO_TON);
 }
-

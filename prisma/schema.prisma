@@ -63,6 +63,7 @@ model WishlistItem {
   modelName      String
   backdropName   String?
   symbolName     String?
+  sourceUrl      String?
   createdAt      DateTime   @default(now())
   owner          User       @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
   purchases      Purchase[]
@@ -120,4 +121,3 @@ model StarsLedgerEntry {
 
   @@index([userId, createdAt])
 }
-

@@ -18,6 +18,10 @@ class CreateWishlistItemDto {
   @IsOptional()
   @IsString()
   symbolName?: string;
+
+  @IsOptional()
+  @IsString()
+  sourceUrl?: string;
 }
 
 @Controller("wishlist")
@@ -47,4 +51,3 @@ export class WishlistController {
     return this.wishlist.remove(user.id, id);
   }
 }
-

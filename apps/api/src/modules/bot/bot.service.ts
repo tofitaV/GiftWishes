@@ -2,12 +2,15 @@ import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Telegraf } from "telegraf";
 import { PrismaService } from "../prisma/prisma.service.js";
+import { WishlistService } from "../wishlist/wishlist.service.js";
+import { addTelegramNftGiftFromMessage, type TelegramNftGift } from "./telegram-nft.js";
 
 type InlineWishlistItem = {
   collectionName: string;
   modelName: string;
   backdropName: string | null;
   symbolName: string | null;
+  sourceUrl?: string | null;
 };
 
 type InlineWishlistResult = {
@@ -25,6 +28,10 @@ type InlineWishlistResult = {
 
 type WishlistProfileReplyMarkup = {
   inline_keyboard: [[{ text: string; web_app: { url: string } }]];
+};
+
+type WishlistGiftLinksReplyMarkup = {
+  inline_keyboard: { text: string; url: string }[][];
 };
 
 const WISHLIST_START_PREFIX = "wishlist_";
@@ -47,6 +54,22 @@ export function formatInlineWishlistMessage({ username, items }: { username: str
   return [`Wishlist ${displayName}`, "", ...lines].join("\n");
 }
 
+export function formatOwnWishlistMessage({ items }: { items: InlineWishlistItem[] }) {
+  if (items.length === 0) {
+    return "Твой wishlist пока пуст";
+  }
+
+  const lines = items.flatMap((item, index) => {
+    const itemLines = [`${index + 1}. ${item.collectionName} - ${item.modelName}`];
+    if (item.backdropName) itemLines.push(`   Фон: ${item.backdropName}`);
+    if (item.symbolName) itemLines.push(`   Узор: ${item.symbolName}`);
+    if (item.sourceUrl) itemLines.push(`   Ссылка: ${item.sourceUrl}`);
+    return itemLines;
+  });
+
+  return ["Твой wishlist", "", ...lines].join("\n");
+}
+
 export function parseWishlistStartPayload(payload: string | undefined) {
   if (!payload?.startsWith(WISHLIST_START_PREFIX)) return null;
 
@@ -61,12 +84,41 @@ export function createBotWishlistDeepLink({ botUsername, appShortName, ownerUser
   return `https://t.me/${username}${appPath}?startapp=${WISHLIST_PROFILE_START_PREFIX}${ownerUserId}`;
 }
 
+export function isOwnWishlistCommand(text: string) {
+  const normalized = text.trim().toLowerCase();
+  return (
+    /^\/(?:wishlist|list)(?:@\w+)?$/.test(normalized) ||
+    normalized === "wishlist" ||
+    normalized === "список" ||
+    normalized === "показать список" ||
+    normalized === "покажи список" ||
+    normalized === "показать wishlist" ||
+    normalized === "покажи wishlist"
+  );
+}
+
 export function createWishlistProfileReplyMarkup({ ownerUsername, webAppUrl }: { ownerUsername: string | null; webAppUrl: string }): WishlistProfileReplyMarkup {
   const label = ownerUsername ? `Открыть профиль @${ownerUsername} / Купить гифт` : "Открыть профиль / Купить гифт";
 
   return {
     inline_keyboard: [[{ text: label, web_app: { url: webAppUrl } }]]
   };
+}
+
+export function createWishlistGiftLinksReplyMarkup({ items }: { items: InlineWishlistItem[] }): WishlistGiftLinksReplyMarkup | undefined {
+  const buttons = items.flatMap((item, index) => {
+    if (!item.sourceUrl) return [];
+    return [
+      [
+        {
+          text: `Открыть ${index + 1}. ${item.collectionName} - ${item.modelName}`,
+          url: item.sourceUrl
+        }
+      ]
+    ];
+  });
+
+  return buttons.length > 0 ? { inline_keyboard: buttons } : undefined;
 }
 
 export function createInlineWishlistResult({ wishlistLink, message, itemCount }: { wishlistLink: string; message: string; itemCount: number }): InlineWishlistResult {
@@ -91,7 +143,8 @@ export class BotService implements OnModuleInit {
 
   constructor(
     private readonly config: ConfigService,
-    private readonly prisma: PrismaService
+    private readonly prisma: PrismaService,
+    private readonly wishlist: WishlistService
   ) {}
 
   private appUrl(path = "") {
@@ -115,6 +168,42 @@ export class BotService implements OnModuleInit {
     });
   }
 
+  private async fetchTelegramNftHtml(url: string) {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Telegram NFT page request failed ${response.status}`);
+    }
+    return response.text();
+  }
+
+  private async upsertTelegramUser(from: { id: number; username?: string; first_name?: string; last_name?: string; language_code?: string }) {
+    return this.prisma.user.upsert({
+      where: { telegramId: String(from.id) },
+      update: {
+        username: from.username,
+        firstName: from.first_name ?? null,
+        lastName: from.last_name ?? null,
+        languageCode: from.language_code ?? null,
+        isUsernameVisible: true
+      },
+      create: {
+        telegramId: String(from.id),
+        username: from.username,
+        firstName: from.first_name ?? null,
+        lastName: from.last_name ?? null,
+        languageCode: from.language_code ?? null,
+        isUsernameVisible: true
+      }
+    });
+  }
+
+  private formatAddedGiftMessage(gift: { collectionName: string; modelName: string; backdropName?: string | null; symbolName?: string | null }) {
+    const lines = [`Добавлено в wishlist: ${gift.collectionName} - ${gift.modelName}`];
+    if (gift.backdropName) lines.push(`Фон: ${gift.backdropName}`);
+    if (gift.symbolName) lines.push(`Узор: ${gift.symbolName}`);
+    return lines.join("\n");
+  }
+
   onModuleInit() {
     const token = this.config.get<string>("BOT_TOKEN");
     if (!token) {
@@ -133,24 +222,7 @@ export class BotService implements OnModuleInit {
         return;
       }
 
-      await this.prisma.user.upsert({
-        where: { telegramId: String(from.id) },
-        update: {
-          username: from.username,
-          firstName: from.first_name ?? null,
-          lastName: from.last_name ?? null,
-          languageCode: from.language_code ?? null,
-          isUsernameVisible: true
-        },
-        create: {
-          telegramId: String(from.id),
-          username: from.username,
-          firstName: from.first_name ?? null,
-          lastName: from.last_name ?? null,
-          languageCode: from.language_code ?? null,
-          isUsernameVisible: true
-        }
-      });
+      await this.upsertTelegramUser(from);
 
       const ownerUserId = parseWishlistStartPayload((ctx as { payload?: string }).payload);
       if (ownerUserId) {
@@ -207,6 +279,36 @@ export class BotService implements OnModuleInit {
         ],
         { cache_time: 0 }
       );
+    });
+
+    this.bot.on("text", async (ctx) => {
+      const from = ctx.from;
+      if (!from) return;
+
+      const message = ctx.message as { text?: string };
+      const text = message.text ?? "";
+      try {
+        const user = await this.upsertTelegramUser(from);
+        if (isOwnWishlistCommand(text)) {
+          const wishlist = await this.wishlist.getMine(user.id);
+          await ctx.reply(formatOwnWishlistMessage({ items: wishlist.items }), {
+            reply_markup: createWishlistGiftLinksReplyMarkup({ items: wishlist.items })
+          });
+          return;
+        }
+
+        const createdGift = await addTelegramNftGiftFromMessage({
+          text,
+          fetchHtml: (url) => this.fetchTelegramNftHtml(url),
+          createWishlistItem: (input) => this.wishlist.create(user.id, input)
+        });
+
+        if (!createdGift) return;
+        await ctx.reply(this.formatAddedGiftMessage(createdGift));
+      } catch (error) {
+        this.logger.warn("Telegram NFT wishlist import failed", error instanceof Error ? error.stack : String(error));
+        await ctx.reply(error instanceof Error ? error.message : "Не удалось добавить гифт в wishlist.");
+      }
     });
 
     void this.bot.launch();
