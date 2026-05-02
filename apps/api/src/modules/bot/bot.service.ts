@@ -55,9 +55,10 @@ export function parseWishlistStartPayload(payload: string | undefined) {
   return ownerUserId;
 }
 
-export function createBotWishlistDeepLink({ botUsername, ownerUserId }: { botUsername: string; ownerUserId: string }) {
+export function createBotWishlistDeepLink({ botUsername, appShortName, ownerUserId }: { botUsername: string; appShortName?: string; ownerUserId: string }) {
   const username = botUsername.replace(/^@/, "");
-  return `https://t.me/${username}?startapp=${WISHLIST_PROFILE_START_PREFIX}${ownerUserId}`;
+  const appPath = appShortName ? `/${appShortName.replace(/^\//, "")}` : "";
+  return `https://t.me/${username}${appPath}?startapp=${WISHLIST_PROFILE_START_PREFIX}${ownerUserId}`;
 }
 
 export function createWishlistProfileReplyMarkup({ ownerUsername, webAppUrl }: { ownerUsername: string | null; webAppUrl: string }): WishlistProfileReplyMarkup {
@@ -107,7 +108,11 @@ export class BotService implements OnModuleInit {
   }
 
   private botWishlistUrl(userId: string) {
-    return createBotWishlistDeepLink({ botUsername: this.botUsername(), ownerUserId: userId });
+    return createBotWishlistDeepLink({
+      botUsername: this.botUsername(),
+      appShortName: this.config.get<string>("BOT_APP_SHORT_NAME"),
+      ownerUserId: userId
+    });
   }
 
   onModuleInit() {
