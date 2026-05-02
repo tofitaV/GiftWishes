@@ -20,6 +20,7 @@ type InlineWishlistResult = {
   description: string;
   input_message_content: {
     message_text: string;
+    parse_mode: "HTML";
   };
   reply_markup: {
     inline_keyboard: [[{ text: string; url: string }]];
@@ -137,7 +138,8 @@ export function createInlineWishlistResult({ wishlistLink, message, itemCount }:
     title: "Показать свой wishlist",
     description: itemCount > 0 ? `${itemCount} подарков в списке` : "Wishlist пока пуст",
     input_message_content: {
-      message_text: message
+      message_text: message,
+      parse_mode: "HTML"
     },
     reply_markup: {
       inline_keyboard: [[{ text: itemCount > 0 ? "Открыть wishlist" : "Добавить подарки", url: wishlistLink }]]
