@@ -13,6 +13,7 @@
     "typecheck": "npm run typecheck -ws --if-present",
     "test": "npm run test -ws --if-present",
     "gift-catalog:generate": "node scripts/generate-gift-catalog.mjs",
+    "gift-emojis:generate": "node scripts/generate-gift-model-emojis.mjs",
     "gift-assets:download": "node scripts/download-gift-assets.mjs",
     "prisma:generate": "prisma generate --schema prisma/schema.prisma",
     "prisma:migrate": "prisma migrate dev --schema prisma/schema.prisma"

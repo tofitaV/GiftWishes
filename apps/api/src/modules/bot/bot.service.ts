@@ -3,6 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import { Telegraf } from "telegraf";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { WishlistService } from "../wishlist/wishlist.service.js";
+import { formatGiftModelEmojiHtml } from "./gift-model-emojis.js";
 import { addTelegramNftGiftFromMessage, type TelegramNftGift } from "./telegram-nft.js";
 
 type InlineWishlistItem = {
@@ -72,8 +73,9 @@ export function formatOwnWishlistMessage({ items }: { items: InlineWishlistItem[
 
 function formatGiftTitle(item: Pick<InlineWishlistItem, "collectionName" | "modelName" | "sourceUrl">) {
   const title = `${escapeTelegramHtml(item.collectionName)} - ${escapeTelegramHtml(item.modelName)}`;
-  if (!item.sourceUrl) return title;
-  return `<a href="${escapeTelegramHtml(item.sourceUrl)}">${title}</a>`;
+  const linkedTitle = item.sourceUrl ? `<a href="${escapeTelegramHtml(item.sourceUrl)}">${title}</a>` : title;
+  const emoji = formatGiftModelEmojiHtml(item.collectionName, item.modelName);
+  return emoji ? `${emoji} ${linkedTitle}` : linkedTitle;
 }
 
 function escapeTelegramHtml(value: string) {
