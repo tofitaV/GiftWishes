@@ -3,6 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import { Telegraf } from "telegraf";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { WishlistService } from "../wishlist/wishlist.service.js";
+import { lookupGiftBackdropEmoji } from "./gift-backdrop-emojis.js";
 import { lookupGiftModelEmoji } from "./gift-model-emojis.js";
 import { addTelegramNftGiftFromMessage, type TelegramNftGift } from "./telegram-nft.js";
 
@@ -105,14 +106,13 @@ function formatWishlistReply({ header, emptyMessage, items }: { header: string; 
 
     builder.append(`${index + 1}. `);
     appendGiftTitle(builder, item);
-    if (item.backdropName) builder.append(`\n   Фон: ${item.backdropName}`);
     if (item.symbolName) builder.append(`\n   Узор: ${item.symbolName}`);
   });
 
   return builder.build();
 }
 
-function appendGiftTitle(builder: TelegramMessageBuilder, item: Pick<InlineWishlistItem, "collectionName" | "modelName" | "sourceUrl">) {
+function appendGiftTitle(builder: TelegramMessageBuilder, item: Pick<InlineWishlistItem, "collectionName" | "modelName" | "backdropName" | "sourceUrl">) {
   const emoji = lookupGiftModelEmoji(item.collectionName, item.modelName);
   if (emoji) {
     const offset = builder.length;
@@ -136,6 +136,25 @@ function appendGiftTitle(builder: TelegramMessageBuilder, item: Pick<InlineWishl
       length: title.length,
       url: item.sourceUrl
     });
+  }
+
+  if (item.backdropName) {
+    const backdropEmoji = lookupGiftBackdropEmoji(item.backdropName);
+    builder.append(" ");
+
+    if (backdropEmoji) {
+      const backdropOffset = builder.length;
+      builder.append(backdropEmoji.fallback);
+      builder.addEntity({
+        type: "custom_emoji",
+        offset: backdropOffset,
+        length: backdropEmoji.fallback.length,
+        custom_emoji_id: backdropEmoji.emojiId
+      });
+      builder.append(" ");
+    }
+
+    builder.append(item.backdropName);
   }
 }
 

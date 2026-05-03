@@ -33,7 +33,7 @@ describe("formatInlineWishlistMessage", () => {
           }
         ]
       })
-    ).toBe("Wishlist @alice\n\n1. 🎁 Big Year - Cyberpunk\n   Фон: Cobalt Blue\n   Узор: Star\n2. Trapped Heart - Ruby");
+    ).toBe("Wishlist @alice\n\n1. 🎁 Big Year - Cyberpunk 🎁 Cobalt Blue\n   Узор: Star\n2. Trapped Heart - Ruby");
   });
 
   it("returns an empty wishlist message when there are no gifts", () => {
@@ -54,7 +54,7 @@ describe("formatInlineWishlistMessage", () => {
           }
         ]
       })
-    ).toBe("Wishlist @alice\n\n1. 💩 Happy Brownie - Solid Waste\n   Фон: Burgundy\n   Узор: Mafdet");
+    ).toBe("Wishlist @alice\n\n1. 💩 Happy Brownie - Solid Waste 🎁 Burgundy\n   Узор: Mafdet");
   });
 
   it("uses explicit custom emoji and text link entities for inline wishlist messages", () => {
@@ -72,7 +72,7 @@ describe("formatInlineWishlistMessage", () => {
         ]
       })
     ).toEqual({
-      text: "Wishlist @alice\n\n1. 💩 Happy Brownie - Solid Waste\n   Фон: Burgundy\n   Узор: Mafdet",
+      text: "Wishlist @alice\n\n1. 💩 Happy Brownie - Solid Waste 🎁 Burgundy\n   Узор: Mafdet",
       entities: [
         {
           type: "custom_emoji",
@@ -85,6 +85,12 @@ describe("formatInlineWishlistMessage", () => {
           offset: 23,
           length: 27,
           url: "https://t.me/nft/HappyBrownie-192207"
+        },
+        {
+          type: "custom_emoji",
+          offset: 51,
+          length: 2,
+          custom_emoji_id: "5352758474751119520"
         }
       ]
     });
@@ -139,7 +145,7 @@ describe("formatInlineWishlistMessage", () => {
     expect(edited).toBe(true);
     expect(editCalls).toEqual([
       [
-        "Wishlist @alice\n\n1. 💩 Happy Brownie - Solid Waste\n   Фон: Burgundy\n   Узор: Mafdet",
+        "Wishlist @alice\n\n1. 💩 Happy Brownie - Solid Waste 🎁 Burgundy\n   Узор: Mafdet",
         {
           entities: [
             {
@@ -153,6 +159,12 @@ describe("formatInlineWishlistMessage", () => {
               offset: 23,
               length: 27,
               url: "https://t.me/nft/HappyBrownie-192207"
+            },
+            {
+              type: "custom_emoji",
+              offset: 51,
+              length: 2,
+              custom_emoji_id: "5352758474751119520"
             }
           ],
           reply_markup: {
@@ -211,7 +223,7 @@ describe("formatOwnWishlistMessage", () => {
           }
         ]
       })
-    ).toBe("Твой wishlist\n\n1. 🏅 Victory Medal - Bronze\n   Фон: Steel Grey\n   Узор: Shield");
+    ).toBe("Твой wishlist\n\n1. 🏅 Victory Medal - Bronze 🎁 Steel Grey\n   Узор: Shield");
   });
 
   it("returns an empty message when the sender has no gifts", () => {
@@ -230,7 +242,7 @@ describe("formatOwnWishlistMessage", () => {
           }
         ]
       })
-    ).toBe("\u0422\u0432\u043E\u0439 wishlist\n\n1. \uD83C\uDF81 Plush Pepe - Raphael\n   \u0424\u043E\u043D: Black");
+    ).toBe("\u0422\u0432\u043E\u0439 wishlist\n\n1. \uD83C\uDF81 Plush Pepe - Raphael \uD83C\uDF81 Black");
   });
 
   it("uses explicit custom emoji entities instead of HTML tags for the sender's wishlist", () => {
@@ -247,7 +259,7 @@ describe("formatOwnWishlistMessage", () => {
         ]
       })
     ).toEqual({
-      text: "Твой wishlist\n\n1. 🎁 Plush Pepe - Raphael\n   Фон: Black",
+      text: "Твой wishlist\n\n1. 🎁 Plush Pepe - Raphael 🎁 Black",
       entities: [
         {
           type: "custom_emoji",
@@ -260,6 +272,12 @@ describe("formatOwnWishlistMessage", () => {
           offset: 21,
           length: 20,
           url: "https://t.me/nft/PlushPepe-123"
+        },
+        {
+          type: "custom_emoji",
+          offset: 42,
+          length: 2,
+          custom_emoji_id: "5350385797377855605"
         }
       ]
     });
