@@ -69,6 +69,31 @@ describe("WishlistService.create", () => {
     );
   });
 
+  it("uses stored Telegram auth data when the wishlist request has no auth header", async () => {
+    const prisma = prismaStub();
+    const seeTgGifts = {
+      findFirstGift: vi.fn(async () => ({ sourceUrl: "https://t.me/nft/PlushPepe-123", backdropName: "Black" }))
+    };
+    const telegramAuthDataStore = {
+      get: vi.fn(() => "query_id=stored&hash=stored")
+    };
+    const service = new WishlistService(prisma as never, seeTgGifts as never, telegramAuthDataStore as never);
+
+    await service.create("user-id", {
+      collectionName: "Plush Pepe",
+      modelName: "Raphael",
+      backdropName: "Black"
+    });
+
+    expect(telegramAuthDataStore.get).toHaveBeenCalledWith("user-id");
+    expect(seeTgGifts.findFirstGift).toHaveBeenCalledWith({
+      collectionName: "Plush Pepe",
+      modelName: "Raphael",
+      backdropName: "Black",
+      telegramAuthData: "query_id=stored&hash=stored"
+    });
+  });
+
   it("does not call see.tg when the user has no free wishlist slot", async () => {
     const prisma = prismaStub();
     prisma.wishlistItem.count.mockResolvedValueOnce(1);

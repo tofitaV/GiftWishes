@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { FREE_WISHLIST_SLOTS } from "@gift-wishes/shared";
+import { TelegramAuthDataStore } from "../auth/telegram-auth-data.store.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { SeeTgGiftsService } from "./see-tg-gifts.service.js";
 
@@ -16,7 +17,8 @@ type CreateWishlistItemInput = {
 export class WishlistService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly seeTgGifts: SeeTgGiftsService
+    private readonly seeTgGifts: SeeTgGiftsService,
+    private readonly telegramAuthDataStore: TelegramAuthDataStore
   ) {}
 
   async getMine(userId: string) {
@@ -59,7 +61,7 @@ export class WishlistService {
         collectionName: input.collectionName,
         modelName: input.modelName,
         backdropName: input.backdropName,
-        telegramAuthData: input.telegramAuthData
+        telegramAuthData: input.telegramAuthData || this.telegramAuthDataStore.get(userId)
       });
 
     return this.prisma.wishlistItem.create({

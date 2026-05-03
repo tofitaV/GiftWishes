@@ -1,4 +1,4 @@
-import { Inject, Injectable, Optional } from "@nestjs/common";
+import { Inject, Injectable, Logger, Optional } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 
 type SeeTgGiftLookup = {
@@ -19,6 +19,7 @@ export const SEE_TG_FETCHER = Symbol("SEE_TG_FETCHER");
 
 @Injectable()
 export class SeeTgGiftsService {
+  private readonly logger = new Logger(SeeTgGiftsService.name);
   private readonly fetcher: Fetcher;
 
   constructor(
@@ -30,7 +31,14 @@ export class SeeTgGiftsService {
 
   async findFirstGift(input: SeeTgGiftLookup): Promise<SeeTgResolvedGift | null> {
     const token = this.config.get<string>("SEE_TG_TOKEN");
-    if (!token || !input.telegramAuthData) return null;
+    if (!token) {
+      this.logger.warn("SEE_TG_TOKEN is not configured");
+      return null;
+    }
+    if (!input.telegramAuthData) {
+      this.logger.warn(`Skipping see.tg lookup without Telegram auth data for ${input.collectionName} / ${input.modelName}`);
+      return null;
+    }
 
     const exactBackdropGift = await this.searchFirstGift(input, token, Boolean(input.backdropName));
     if (exactBackdropGift || !input.backdropName) return exactBackdropGift;
@@ -50,10 +58,20 @@ export class SeeTgGiftsService {
     url.searchParams.set("sort_by", "num");
     url.searchParams.set("order", "asc");
 
-    const response = await this.fetcher(url.toString()).catch(() => null);
-    if (!response?.ok) return null;
+    const response = await this.fetcher(url.toString()).catch((error: unknown) => {
+      this.logger.warn(`see.tg lookup failed for ${input.collectionName} / ${input.modelName}`, error instanceof Error ? error.message : String(error));
+      return null;
+    });
+    if (!response?.ok) {
+      this.logger.warn(`see.tg lookup returned ${response?.status ?? "no response"} for ${input.collectionName} / ${input.modelName}`);
+      return null;
+    }
 
-    return giftToResolvedGift(firstGift(await response.json()));
+    const resolvedGift = giftToResolvedGift(firstGift(await response.json()));
+    if (!resolvedGift) {
+      this.logger.warn(`see.tg lookup returned no parsable gift for ${input.collectionName} / ${input.modelName}`);
+    }
+    return resolvedGift;
   }
 }
 

@@ -3,6 +3,7 @@ import { BadRequestException, Injectable, UnauthorizedException } from "@nestjs/
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { PrismaService } from "../prisma/prisma.service.js";
+import { TelegramAuthDataStore } from "./telegram-auth-data.store.js";
 
 type TelegramInitUser = {
   id: number;
@@ -17,7 +18,8 @@ export class AuthService {
   constructor(
     private readonly config: ConfigService,
     private readonly jwt: JwtService,
-    private readonly prisma: PrismaService
+    private readonly prisma: PrismaService,
+    private readonly telegramAuthDataStore: TelegramAuthDataStore
   ) {}
 
   async loginWithTelegramInitData(initData: string) {
@@ -51,6 +53,7 @@ export class AuthService {
       { sub: user.id, telegramId: user.telegramId },
       { secret: this.config.getOrThrow<string>("JWT_SECRET"), expiresIn: "12h" }
     );
+    this.telegramAuthDataStore.set(user.id, initData);
 
     return {
       token,

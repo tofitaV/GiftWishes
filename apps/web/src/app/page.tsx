@@ -78,6 +78,7 @@ export default function HomePage() {
   }
 
   async function addGift() {
+    await authenticateWithTelegram({ initData: getTelegramInitData(), forceRefresh: true });
     await api("/wishlist", {
       method: "POST",
       body: JSON.stringify({
