@@ -33,7 +33,7 @@ describe("formatInlineWishlistMessage", () => {
           }
         ]
       })
-    ).toBe("Wishlist @alice\n\n1. 🎁 Big Year - Cyberpunk 🎁 Cobalt Blue\n   Узор: Star\n2. Trapped Heart - Ruby");
+    ).toBe("Wishlist @alice\n\n1. 🎁 Big Year - Cyberpunk 🎁 Cobalt Blue\n2. Trapped Heart - Ruby");
   });
 
   it("returns an empty wishlist message when there are no gifts", () => {
@@ -54,7 +54,7 @@ describe("formatInlineWishlistMessage", () => {
           }
         ]
       })
-    ).toBe("Wishlist @alice\n\n1. 💩 Happy Brownie - Solid Waste 🎁 Burgundy\n   Узор: Mafdet");
+    ).toBe("Wishlist @alice\n\n1. 💩 Happy Brownie - Solid Waste 🎁 Burgundy");
   });
 
   it("uses explicit custom emoji and text link entities for inline wishlist messages", () => {
@@ -72,7 +72,7 @@ describe("formatInlineWishlistMessage", () => {
         ]
       })
     ).toEqual({
-      text: "Wishlist @alice\n\n1. 💩 Happy Brownie - Solid Waste 🎁 Burgundy\n   Узор: Mafdet",
+      text: "Wishlist @alice\n\n1. 💩 Happy Brownie - Solid Waste 🎁 Burgundy",
       entities: [
         {
           type: "custom_emoji",
@@ -145,7 +145,7 @@ describe("formatInlineWishlistMessage", () => {
     expect(edited).toBe(true);
     expect(editCalls).toEqual([
       [
-        "Wishlist @alice\n\n1. 💩 Happy Brownie - Solid Waste 🎁 Burgundy\n   Узор: Mafdet",
+        "Wishlist @alice\n\n1. 💩 Happy Brownie - Solid Waste 🎁 Burgundy",
         {
           entities: [
             {
@@ -223,7 +223,7 @@ describe("formatOwnWishlistMessage", () => {
           }
         ]
       })
-    ).toBe("Твой wishlist\n\n1. 🏅 Victory Medal - Bronze 🎁 Steel Grey\n   Узор: Shield");
+    ).toBe("Твой wishlist\n\n1. 🏅 Victory Medal - Bronze 🎁 Steel Grey");
   });
 
   it("returns an empty message when the sender has no gifts", () => {

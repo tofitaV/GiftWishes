@@ -25,7 +25,7 @@ export function GiftCard({ item, canDelete, onDelete, onBuy }: Props) {
       </div>
       <h2 className="card-title">{item.modelName}</h2>
       <div className="muted">{item.collectionName}</div>
-      <div className="muted">{item.backdropName ?? "Любой фон"}</div>
+      <div className="muted">Фон: {item.backdropName ?? "любой"}</div>
       <div className="button-row">
         {onBuy ? (
           <button className="button" type="button" onClick={() => onBuy(item.id)}>

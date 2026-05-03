@@ -106,7 +106,6 @@ function formatWishlistReply({ header, emptyMessage, items }: { header: string; 
 
     builder.append(`${index + 1}. `);
     appendGiftTitle(builder, item);
-    if (item.symbolName) builder.append(`\n   Узор: ${item.symbolName}`);
   });
 
   return builder.build();

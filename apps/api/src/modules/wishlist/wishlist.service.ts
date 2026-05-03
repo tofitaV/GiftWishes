@@ -53,23 +53,23 @@ export class WishlistService {
       throw new BadRequestException("Wishlist slot limit reached. Buy an extra slot for 50 Telegram Stars.");
     }
 
-    const sourceUrl =
-      input.sourceUrl ||
-      (await this.seeTgGifts.findFirstGiftUrl({
+    const resolvedGift = input.sourceUrl
+      ? null
+      : await this.seeTgGifts.findFirstGift({
         collectionName: input.collectionName,
         modelName: input.modelName,
         backdropName: input.backdropName,
         telegramAuthData: input.telegramAuthData
-      }));
+      });
 
     return this.prisma.wishlistItem.create({
       data: {
         ownerUserId: userId,
         collectionName: input.collectionName,
         modelName: input.modelName,
-        backdropName: input.backdropName || null,
+        backdropName: resolvedGift?.backdropName || input.backdropName || null,
         symbolName: input.symbolName || null,
-        sourceUrl: sourceUrl || null
+        sourceUrl: input.sourceUrl || resolvedGift?.sourceUrl || null
       }
     });
   }
