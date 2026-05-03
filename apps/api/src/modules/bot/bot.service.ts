@@ -55,9 +55,16 @@ type WishlistGiftLinksReplyMarkup = {
   inline_keyboard: { text: string; url: string }[][];
 };
 
+type ChosenInlineWishlistResult = {
+  result_id: string;
+  from: { id: number };
+  inline_message_id?: string;
+};
+
 const WISHLIST_START_PREFIX = "wishlist_";
 const WISHLIST_PROFILE_START_PREFIX = "profile-";
 const DEFAULT_BOT_USERNAME = "giftwishes_bot";
+const INLINE_WISHLIST_RESULT_ID = "wishlist";
 
 export function formatInlineWishlistMessage({ username, items }: { username: string | null; items: InlineWishlistItem[] }) {
   return formatInlineWishlistReply({ username, items }).text;
@@ -211,7 +218,7 @@ export function createWishlistGiftLinksReplyMarkup({ items }: { items: InlineWis
 export function createInlineWishlistResult({ wishlistLink, message, itemCount }: { wishlistLink: string; message: FormattedTelegramMessage; itemCount: number }): InlineWishlistResult {
   return {
     type: "article",
-    id: "wishlist",
+    id: INLINE_WISHLIST_RESULT_ID,
     title: "Показать свой wishlist",
     description: itemCount > 0 ? `${itemCount} подарков в списке` : "Wishlist пока пуст",
     input_message_content: {
@@ -222,6 +229,40 @@ export function createInlineWishlistResult({ wishlistLink, message, itemCount }:
       inline_keyboard: [[{ text: itemCount > 0 ? "Открыть wishlist" : "Добавить подарки", url: wishlistLink }]]
     }
   };
+}
+
+export async function editChosenInlineWishlistResult({
+  chosenInlineResult,
+  findUserByTelegramId,
+  createWishlistLink,
+  editMessageText
+}: {
+  chosenInlineResult: ChosenInlineWishlistResult;
+  findUserByTelegramId: (telegramId: string) => Promise<{ id: string; username: string | null; wishlistItems: InlineWishlistItem[] } | null>;
+  createWishlistLink: (userId: string) => string;
+  editMessageText: (text: string, extra: { entities?: TelegramMessageEntity[]; reply_markup: InlineWishlistResult["reply_markup"] }) => Promise<unknown>;
+}) {
+  if (chosenInlineResult.result_id !== INLINE_WISHLIST_RESULT_ID) return false;
+  if (!chosenInlineResult.inline_message_id) return false;
+
+  const user = await findUserByTelegramId(String(chosenInlineResult.from.id));
+  if (!user) return false;
+
+  const message = formatInlineWishlistReply({
+    username: user.username,
+    items: user.wishlistItems
+  });
+  const result = createInlineWishlistResult({
+    wishlistLink: createWishlistLink(user.id),
+    message,
+    itemCount: user.wishlistItems.length
+  });
+
+  await editMessageText(message.text, {
+    entities: messageEntitiesOption(message),
+    reply_markup: result.reply_markup
+  });
+  return true;
 }
 
 @Injectable()
@@ -369,6 +410,19 @@ export class BotService implements OnModuleInit {
         ],
         { cache_time: 0 }
       );
+    });
+
+    this.bot.on("chosen_inline_result", async (ctx) => {
+      await editChosenInlineWishlistResult({
+        chosenInlineResult: ctx.chosenInlineResult,
+        findUserByTelegramId: (telegramId) =>
+          this.prisma.user.findUnique({
+            where: { telegramId },
+            include: { wishlistItems: { orderBy: { createdAt: "desc" } } }
+          }),
+        createWishlistLink: (userId) => this.botWishlistUrl(userId),
+        editMessageText: (text, extra) => ctx.editMessageText(text, extra)
+      });
     });
 
     this.bot.on("text", async (ctx) => {

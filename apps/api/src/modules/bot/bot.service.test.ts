@@ -4,6 +4,7 @@ import {
   createInlineWishlistResult,
   createWishlistGiftLinksReplyMarkup,
   createWishlistProfileReplyMarkup,
+  editChosenInlineWishlistResult,
   formatInlineWishlistMessage,
   formatInlineWishlistReply,
   formatOwnWishlistMessage,
@@ -102,6 +103,64 @@ describe("formatInlineWishlistMessage", () => {
     });
     expect(result.input_message_content).toEqual({ message_text: "Wishlist @alice", entities: undefined });
     expect(JSON.stringify(result)).not.toContain("web_app");
+  });
+
+  it("edits a chosen inline wishlist result with explicit custom emoji entities", async () => {
+    const editCalls: unknown[] = [];
+
+    const edited = await editChosenInlineWishlistResult({
+      chosenInlineResult: {
+        result_id: "wishlist",
+        from: { id: 123 },
+        inline_message_id: "inline-message-id"
+      },
+      findUserByTelegramId: async (telegramId) => {
+        expect(telegramId).toBe("123");
+        return {
+          id: "user-id",
+          username: "alice",
+          wishlistItems: [
+            {
+              collectionName: "Happy Brownie",
+              modelName: "Solid Waste",
+              backdropName: "Burgundy",
+              symbolName: "Mafdet",
+              sourceUrl: "https://t.me/nft/HappyBrownie-192207"
+            }
+          ]
+        };
+      },
+      createWishlistLink: (userId) => `https://t.me/giftwishes_bot?startapp=profile-${userId}`,
+      editMessageText: async (...args) => {
+        editCalls.push(args);
+      }
+    });
+
+    expect(edited).toBe(true);
+    expect(editCalls).toEqual([
+      [
+        "Wishlist @alice\n\n1. 💩 Happy Brownie - Solid Waste\n   Фон: Burgundy\n   Узор: Mafdet",
+        {
+          entities: [
+            {
+              type: "custom_emoji",
+              offset: 20,
+              length: 2,
+              custom_emoji_id: "6001558562357123088"
+            },
+            {
+              type: "text_link",
+              offset: 23,
+              length: 27,
+              url: "https://t.me/nft/HappyBrownie-192207"
+            }
+          ],
+          reply_markup: {
+            inline_keyboard: [[{ text: "Открыть wishlist", url: "https://t.me/giftwishes_bot?startapp=profile-user-id" }]]
+          }
+        }
+      ]
+    ]);
   });
 
   it("builds a Telegram Mini App deep link for another user's wishlist", () => {
