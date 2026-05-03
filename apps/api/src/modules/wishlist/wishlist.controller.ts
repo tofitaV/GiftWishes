@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Headers, Param, Post, UseGuards } from "@nestjs/common";
 import { IsOptional, IsString } from "class-validator";
 import { CurrentUser, RequestUser } from "../../common/current-user.js";
 import { JwtAuthGuard } from "../../common/jwt-auth.guard.js";
@@ -41,8 +41,8 @@ export class WishlistController {
 
   @UseGuards(JwtAuthGuard)
   @Post()
-  create(@CurrentUser() user: RequestUser, @Body() body: CreateWishlistItemDto) {
-    return this.wishlist.create(user.id, body);
+  create(@CurrentUser() user: RequestUser, @Body() body: CreateWishlistItemDto, @Headers("x-telegram-init-data") telegramAuthData?: string) {
+    return this.wishlist.create(user.id, { ...body, telegramAuthData });
   }
 
   @UseGuards(JwtAuthGuard)
