@@ -96,6 +96,17 @@ type InlineDeleteGiftResult = {
   };
 };
 
+type InlineGiftLinkResult = {
+  type: "article";
+  id: string;
+  title: string;
+  description: string;
+  thumbnail_url: string;
+  input_message_content: {
+    message_text: string;
+  };
+};
+
 type WishlistProfileReplyMarkup = {
   inline_keyboard: [[{ text: string; web_app: { url: string } }]];
 };
@@ -117,10 +128,12 @@ const INLINE_WISHLIST_RESULT_ID = "wishlist";
 const INLINE_ADD_GIFT_RESULT_ID = "add_nft";
 const INLINE_HELP_RESULT_ID = "help";
 const INLINE_DELETE_GIFT_RESULT_ID = "delete_gift";
+const INLINE_GIFT_LINK_RESULT_ID_PREFIX = "gift_link";
 const INLINE_WISHLIST_THUMBNAIL_URL = "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f381.png";
 const INLINE_ADD_THUMBNAIL_URL = "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/2795.png";
 const INLINE_DELETE_THUMBNAIL_URL = "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/2796.png";
 const INLINE_HELP_THUMBNAIL_URL = "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/2753.png";
+const INLINE_GIFT_LINK_THUMBNAIL_URL = "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f517.png";
 
 export function formatInlineWishlistMessage({ username, items }: { username: string | null; items: InlineWishlistItem[] }) {
   return formatInlineWishlistReply({ username, items }).text;
@@ -278,6 +291,14 @@ export function parseWishlistItemRemovalCommand(text: string) {
   return Number.isInteger(itemNumber) && itemNumber > 0 ? itemNumber : null;
 }
 
+export function parseWishlistItemNumberQuery(text: string) {
+  const normalized = text.trim();
+  if (!/^\d+$/.test(normalized)) return null;
+
+  const itemNumber = Number(normalized);
+  return Number.isInteger(itemNumber) && itemNumber >= 1 && itemNumber <= 100 ? itemNumber : null;
+}
+
 export function formatHelpMessage() {
   return [
     "Gift Wishes — бот для хранения желаемых подарков.",
@@ -291,6 +312,9 @@ export function formatHelpMessage() {
     "",
     "Как показать подарки в чате:",
     "Напиши /wishlist, список или показать список. Также можно вызвать бота через @giftwishes_bot и выбрать результат \"Показать свой wishlist\".",
+    "",
+    "Как вывести один подарок:",
+    "Напиши @giftwishes_bot 1, где 1 — номер подарка. Бот отправит только ссылку на этот подарок.",
     "",
     "Как удалить подарок:",
     "В чате напиши @giftwishes_bot и вставь ссылку на подарок. Выбери результат \"Удалить подарок из wishlist\"."
@@ -391,6 +415,19 @@ export function createInlineDeleteGiftResult({ itemNumber, sourceUrl, wishlistLi
     },
     reply_markup: {
       inline_keyboard: [[{ text: "Открыть wishlist", url: wishlistLink }]]
+    }
+  };
+}
+
+export function createInlineGiftLinkResult({ itemNumber, sourceUrl }: { itemNumber: number; sourceUrl: string }): InlineGiftLinkResult {
+  return {
+    type: "article",
+    id: `${INLINE_GIFT_LINK_RESULT_ID_PREFIX}_${itemNumber}`,
+    title: `Вывести подарок #${itemNumber}`,
+    description: sourceUrl,
+    thumbnail_url: INLINE_GIFT_LINK_THUMBNAIL_URL,
+    input_message_content: {
+      message_text: sourceUrl
     }
   };
 }
@@ -562,6 +599,17 @@ export class BotService implements OnModuleInit {
 
     this.bot.on("inline_query", async (ctx) => {
       const from = ctx.from;
+      const itemNumberToSend = parseWishlistItemNumberQuery(ctx.inlineQuery.query ?? "");
+      if (itemNumberToSend) {
+        const user = await this.prisma.user.findUnique({
+          where: { telegramId: String(from.id) },
+          include: { wishlistItems: { orderBy: { createdAt: "asc" } } }
+        });
+        const item = user?.wishlistItems[itemNumberToSend - 1];
+        const results = item?.sourceUrl ? [createInlineGiftLinkResult({ itemNumber: itemNumberToSend, sourceUrl: item.sourceUrl })] : [];
+        return ctx.answerInlineQuery(results, { cache_time: 0, is_personal: true });
+      }
+
       const itemNumberToRemove = parseWishlistItemRemovalCommand(ctx.inlineQuery.query ?? "");
       if (itemNumberToRemove) {
         const user = await this.upsertTelegramUser(from);

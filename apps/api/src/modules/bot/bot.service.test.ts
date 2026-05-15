@@ -3,6 +3,7 @@ import {
   createBotWishlistDeepLink,
   createInlineAddGiftResult,
   createInlineDeleteGiftResult,
+  createInlineGiftLinkResult,
   createInlineHelpResult,
   createInlineWishlistResult,
   createWishlistGiftLinksReplyMarkup,
@@ -16,6 +17,7 @@ import {
   isHelpCommand,
   isOwnWishlistCommand,
   parseWishlistItemRemovalCommand,
+  parseWishlistItemNumberQuery,
   parseWishlistStartPayload
 } from "./bot.service.js";
 
@@ -416,6 +418,34 @@ describe("inline gift delete", () => {
       },
       reply_markup: {
         inline_keyboard: [[{ text: "Открыть wishlist", url: "https://t.me/giftwishes_bot?startapp=profile-user-id" }]]
+      }
+    });
+  });
+});
+
+describe("inline gift link", () => {
+  it("parses numeric inline queries in the 1..100 range", () => {
+    expect(parseWishlistItemNumberQuery("1")).toBe(1);
+    expect(parseWishlistItemNumberQuery("100")).toBe(100);
+    expect(parseWishlistItemNumberQuery("0")).toBeNull();
+    expect(parseWishlistItemNumberQuery("101")).toBeNull();
+    expect(parseWishlistItemNumberQuery("1 gift")).toBeNull();
+  });
+
+  it("creates an inline result that sends only the gift link", () => {
+    expect(
+      createInlineGiftLinkResult({
+        itemNumber: 1,
+        sourceUrl: "https://t.me/nft/LunarSnake-141449"
+      })
+    ).toEqual({
+      type: "article",
+      id: "gift_link_1",
+      title: "Вывести подарок #1",
+      description: "https://t.me/nft/LunarSnake-141449",
+      thumbnail_url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f517.png",
+      input_message_content: {
+        message_text: "https://t.me/nft/LunarSnake-141449"
       }
     });
   });
