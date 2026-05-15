@@ -9,6 +9,7 @@ import { GiftCard } from "../components/gift-card";
 import { PublicWishlistClient } from "../components/public-wishlist-client";
 // import { appHref } from "../lib/routing";
 import { parsePublicWishlistStartParam } from "../lib/routing";
+import { SLOT_PURCHASE_DISABLED } from "../lib/slot-purchase";
 import { authenticateWithTelegram, getTelegramInitData, getTelegramStartParam, prepareTelegramWebApp } from "../lib/telegram-auth";
 
 type MineResponse = {
@@ -24,7 +25,7 @@ const emptySelection: GiftSelection = {
 };
 
 export default function HomePage() {
-  const [wishlist, setWishlist] = useState<MineResponse>({ limit: 1, items: [] });
+  const [wishlist, setWishlist] = useState<MineResponse>({ limit: 3, items: [] });
   const [selection, setSelection] = useState<GiftSelection>(emptySelection);
   const [error, setError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -144,7 +145,7 @@ export default function HomePage() {
           {isAddingGift ? <LoaderCircle className="spin" size={18} /> : <Plus size={18} />}
           {isAddingGift ? "Добавляю..." : "Добавить"}
         </button>
-        <button className="button secondary" type="button" onClick={buySlotStub} disabled={!authReady}>
+        <button className="button secondary" type="button" onClick={buySlotStub} disabled={!authReady || SLOT_PURCHASE_DISABLED}>
           + слот за 50 Stars
         </button>
       </div>

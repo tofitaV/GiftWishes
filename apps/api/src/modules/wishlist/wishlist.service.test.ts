@@ -280,9 +280,9 @@ describe("WishlistService.create", () => {
     });
   });
 
-  it("does not call see.tg when the user has no free wishlist slot", async () => {
+  it("does not call see.tg when the user used all free wishlist slots", async () => {
     const prisma = prismaStub();
-    prisma.wishlistItem.count.mockResolvedValueOnce(1);
+    prisma.wishlistItem.count.mockResolvedValueOnce(3);
     const { seeTgGifts, giftSatellite, service } = wishlistService({
       prisma,
       seeTgGifts: { findFirstGift: vi.fn(async () => ({ sourceUrl: "https://t.me/nft/PlushPepe-123", backdropName: "Sapphire" })) }
@@ -325,6 +325,12 @@ describe("WishlistService.create", () => {
 });
 
 describe("WishlistService reads", () => {
+  it("returns three free wishlist slots for users without purchased slots", async () => {
+    const { service } = wishlistService();
+
+    await expect(service.getMine("user-id")).resolves.toMatchObject({ limit: 3 });
+  });
+
   it("returns own wishlist gifts oldest first so new gifts appear at the end", async () => {
     const { prisma, service } = wishlistService();
 

@@ -1,4 +1,4 @@
-export const FREE_WISHLIST_SLOTS = 1;
+export const FREE_WISHLIST_SLOTS = 3;
 export const EXTRA_WISHLIST_SLOT_PRICE_STARS = 50;
 export const TELEGRAM_MARKET_TRANSFER_FEE_STARS = 25;
 export const NANO_TON = 1_000_000_000n;
