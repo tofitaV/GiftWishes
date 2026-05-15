@@ -9,6 +9,7 @@ import {
   createInlineWishlistResult,
   createWishlistGiftLinksReplyMarkup,
   createWishlistProfileReplyMarkup,
+  editChosenInlineUserWishlistResult,
   editChosenInlineWishlistResult,
   formatInlineWishlistMessage,
   formatInlineWishlistReply,
@@ -224,6 +225,73 @@ describe("formatInlineWishlistMessage", () => {
           disable_web_page_preview: true,
           reply_markup: {
             inline_keyboard: [[{ text: "Открыть wishlist", url: "https://t.me/giftwishes_bot?startapp=profile-user-id" }]]
+          }
+        }
+      ]
+    ]);
+  });
+
+  it("edits a chosen inline user wishlist result with explicit custom emoji entities", async () => {
+    const editCalls: unknown[] = [];
+
+    const edited = await editChosenInlineUserWishlistResult({
+      chosenInlineResult: {
+        result_id: "wishlist_user_alice",
+        query: "@alice",
+        from: { id: 123 },
+        inline_message_id: "inline-message-id"
+      },
+      findUserByUsername: async (username) => {
+        expect(username).toBe("alice");
+        return {
+          id: "user-id",
+          username: "alice",
+          wishlistItems: [
+            {
+              collectionName: "Happy Brownie",
+              modelName: "Solid Waste",
+              backdropName: "Burgundy",
+              symbolName: "Mafdet",
+              sourceUrl: "https://t.me/nft/HappyBrownie-192207"
+            }
+          ]
+        };
+      },
+      createWishlistLink: (userId) => `https://t.me/giftwishes_bot?startapp=profile-${userId}`,
+      editMessageText: async (...args) => {
+        editCalls.push(args);
+      }
+    });
+
+    expect(edited).toBe(true);
+    expect(editCalls).toEqual([
+      [
+        "Wishlist @alice\n\n1. 💩 Happy Brownie - Solid Waste 🎁 Burgundy",
+        {
+          entities: [
+            {
+              type: "custom_emoji",
+              offset: 20,
+              length: 2,
+              custom_emoji_id: "6001558562357123088"
+            },
+            {
+              type: "text_link",
+              offset: 23,
+              length: 27,
+              url: "https://t.me/nft/HappyBrownie-192207"
+            },
+            {
+              type: "custom_emoji",
+              offset: 51,
+              length: 2,
+              custom_emoji_id: "5352758474751119520"
+            }
+          ],
+          link_preview_options: { is_disabled: true },
+          disable_web_page_preview: true,
+          reply_markup: {
+            inline_keyboard: [[{ text: "Открыть wishlist @alice", url: "https://t.me/giftwishes_bot?startapp=profile-user-id" }]]
           }
         }
       ]

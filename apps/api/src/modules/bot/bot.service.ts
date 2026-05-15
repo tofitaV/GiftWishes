@@ -120,6 +120,7 @@ type WishlistGiftLinksReplyMarkup = {
 
 type ChosenInlineWishlistResult = {
   result_id: string;
+  query?: string;
   from: { id: number };
   inline_message_id?: string;
 };
@@ -520,6 +521,53 @@ export async function editChosenInlineWishlistResult({
   return true;
 }
 
+export async function editChosenInlineUserWishlistResult({
+  chosenInlineResult,
+  findUserByUsername,
+  createWishlistLink,
+  editMessageText
+}: {
+  chosenInlineResult: ChosenInlineWishlistResult;
+  findUserByUsername: (username: string) => Promise<{ id: string; username: string | null; wishlistItems: InlineWishlistItem[] } | null>;
+  createWishlistLink: (userId: string) => string;
+  editMessageText: (
+    text: string,
+    extra: {
+      entities?: TelegramMessageEntity[];
+      link_preview_options: { is_disabled: true };
+      disable_web_page_preview: true;
+      reply_markup: InlineWishlistResult["reply_markup"];
+    }
+  ) => Promise<unknown>;
+}) {
+  if (!chosenInlineResult.inline_message_id) return false;
+
+  const username = parseInlineUsernameQuery(chosenInlineResult.query ?? "");
+  if (!username) return false;
+
+  const user = await findUserByUsername(username);
+  if (!user?.username) return false;
+
+  const message = formatInlineWishlistReply({
+    username: user.username,
+    items: user.wishlistItems
+  });
+  const result = createInlineUserWishlistResult({
+    username: user.username,
+    wishlistLink: createWishlistLink(user.id),
+    message,
+    itemCount: user.wishlistItems.length
+  });
+
+  await editMessageText(message.text, {
+    entities: messageEntitiesOption(message),
+    link_preview_options: { is_disabled: true },
+    disable_web_page_preview: true,
+    reply_markup: result.reply_markup
+  });
+  return true;
+}
+
 @Injectable()
 export class BotService implements OnModuleInit {
   private readonly logger = new Logger(BotService.name);
@@ -800,6 +848,18 @@ export class BotService implements OnModuleInit {
         }
         return;
       }
+
+      const editedUserWishlist = await editChosenInlineUserWishlistResult({
+        chosenInlineResult: ctx.chosenInlineResult,
+        findUserByUsername: (username) =>
+          this.prisma.user.findFirst({
+            where: { username: { equals: username, mode: "insensitive" } },
+            include: { wishlistItems: { orderBy: { createdAt: "asc" } } }
+          }),
+        createWishlistLink: (userId) => this.botWishlistUrl(userId),
+        editMessageText: (text, extra) => ctx.editMessageText(text, extra)
+      });
+      if (editedUserWishlist) return;
 
       await editChosenInlineWishlistResult({
         chosenInlineResult: ctx.chosenInlineResult,
