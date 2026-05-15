@@ -2,20 +2,13 @@ import "reflect-metadata";
 import { ValidationPipe } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
+import { buildAllowedOrigins } from "./common/cors.js";
 import { AppModule } from "./modules/app.module.js";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService);
-  const configuredOrigin = config.get<string>("WEB_APP_URL");
-  const configuredUrlOrigin = configuredOrigin ? new URL(configuredOrigin).origin : null;
-  const allowedOrigins = new Set([
-    "http://127.0.0.1:3000",
-    "http://localhost:3000",
-    "https://tofitav.github.io",
-    ...(configuredOrigin ? [configuredOrigin] : []),
-    ...(configuredUrlOrigin ? [configuredUrlOrigin] : [])
-  ]);
+  const allowedOrigins = buildAllowedOrigins(config.get<string>("WEB_APP_URLS") ?? config.get<string>("WEB_APP_URL"));
 
   app.enableCors({
     origin: (origin: string | undefined, callback: (error: Error | null, allow?: boolean) => void) => {
