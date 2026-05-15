@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus } from "lucide-react";
+import { LoaderCircle, Plus } from "lucide-react";
 import type { WishlistItemDto } from "@gift-wishes/shared";
 import { GiftPicker, type GiftSelection } from "../components/gift-picker";
 import { api } from "../lib/api";
@@ -27,8 +27,10 @@ export default function HomePage() {
   const [wishlist, setWishlist] = useState<MineResponse>({ limit: 1, items: [] });
   const [selection, setSelection] = useState<GiftSelection>(emptySelection);
   const [error, setError] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [ownerId, setOwnerId] = useState<string | null>(null);
   const [authReady, setAuthReady] = useState(false);
+  const [isAddingGift, setIsAddingGift] = useState(false);
 
   async function load() {
     try {
@@ -78,18 +80,31 @@ export default function HomePage() {
   }
 
   async function addGift() {
-    await authenticateWithTelegram({ initData: getTelegramInitData(), forceRefresh: true });
-    await api("/wishlist", {
-      method: "POST",
-      body: JSON.stringify({
-        collectionName: selection.collectionName,
-        modelName: selection.modelName,
-        backdropName: selection.backdropName || undefined,
-        symbolName: selection.symbolName || undefined
-      })
-    });
-    setSelection(emptySelection);
-    await load();
+    if (isAddingGift || !selection.collectionName || !selection.modelName) return;
+
+    setIsAddingGift(true);
+    setError(null);
+    setStatusMessage(null);
+
+    try {
+      await authenticateWithTelegram({ initData: getTelegramInitData(), forceRefresh: true });
+      await api("/wishlist", {
+        method: "POST",
+        body: JSON.stringify({
+          collectionName: selection.collectionName,
+          modelName: selection.modelName,
+          backdropName: selection.backdropName || undefined,
+          symbolName: selection.symbolName || undefined
+        })
+      });
+      setSelection(emptySelection);
+      await load();
+      setStatusMessage("Подарок добавлен в список.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось добавить подарок");
+    } finally {
+      setIsAddingGift(false);
+    }
   }
 
   async function removeGift(id: string) {
@@ -120,12 +135,14 @@ export default function HomePage() {
       </header>
 
       {error ? <p className="card">{error}</p> : null}
+      {statusMessage ? <p className="card success-card">{statusMessage}</p> : null}
 
       <GiftPicker value={selection} onChange={setSelection} />
 
       <div className="button-row">
-        <button className="button" type="button" onClick={addGift} disabled={!authReady || !selection.collectionName || !selection.modelName}>
-          <Plus size={18} /> Добавить
+        <button className="button" type="button" onClick={addGift} disabled={!authReady || !selection.collectionName || !selection.modelName || isAddingGift}>
+          {isAddingGift ? <LoaderCircle className="spin" size={18} /> : <Plus size={18} />}
+          {isAddingGift ? "Добавляю..." : "Добавить"}
         </button>
         <button className="button secondary" type="button" onClick={buySlotStub} disabled={!authReady}>
           + слот за 50 Stars

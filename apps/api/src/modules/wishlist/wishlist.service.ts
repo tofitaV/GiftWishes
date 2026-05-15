@@ -80,7 +80,7 @@ export class WishlistService {
       backdropName: input.backdropName,
       telegramAuthData: input.telegramAuthData || this.telegramAuthDataStore.get(userId)
     });
-    if (seeTgGift) return seeTgGift;
+    if (this.matchesRequestedBackdrop(input, seeTgGift)) return seeTgGift;
 
     const listings = await this.giftSatellite
       .searchMarket("telegram", input.collectionName, {
@@ -89,7 +89,7 @@ export class WishlistService {
       })
       .catch(() => []);
     const fallbackListings =
-      listings.length === 0 && input.backdropName
+      listings.length === 0 && !input.backdropName
         ? await this.giftSatellite
             .searchMarket("telegram", input.collectionName, {
               modelName: input.modelName,
@@ -100,17 +100,29 @@ export class WishlistService {
     const [listing] = listings.length > 0 ? listings : fallbackListings;
 
     if (!listing) {
-      return this.telegramNftLookup.findFirstGift({
+      const telegramNftGift = await this.telegramNftLookup.findFirstGift({
         collectionName: input.collectionName,
         modelName: input.modelName,
         backdropName: input.backdropName
       });
+      return this.matchesRequestedBackdrop(input, telegramNftGift) ? telegramNftGift : null;
     }
 
-    return {
+    const resolvedListing = {
       sourceUrl: listing.link || `https://t.me/nft/${listing.slug}`,
       backdropName: listing.backdropName
     };
+    return this.matchesRequestedBackdrop(input, resolvedListing) ? resolvedListing : null;
+  }
+
+  private matchesRequestedBackdrop(input: CreateWishlistItemInput, gift: { backdropName?: string | null } | null) {
+    if (!gift) return false;
+    if (!input.backdropName) return true;
+    return this.normalizeName(gift.backdropName) === this.normalizeName(input.backdropName);
+  }
+
+  private normalizeName(value?: string | null) {
+    return value?.trim().toLowerCase() || "";
   }
 
   async remove(userId: string, id: string) {
