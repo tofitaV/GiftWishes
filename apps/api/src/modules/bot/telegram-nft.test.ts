@@ -45,6 +45,28 @@ describe("parseTelegramNftGift", () => {
       symbolName: "Shield"
     });
   });
+
+  it("parses Telegram NFT fields separated by pipes", () => {
+    expect(
+      parseTelegramNftGift(
+        `<meta property="og:description" content="This NFT was created from a gift on Telegram.
+
+Collectible #2808
+
+Owner | MR
+Model | Bronze 3%
+Backdrop | Raspberry 1.2%
+Symbol | Pearl 0.7%
+Quantity | 98 580/124 608 issued">`,
+        "https://t.me/nft/VictoryMedal-2808"
+      )
+    ).toEqual({
+      collectionName: "Victory Medal",
+      modelName: "Bronze",
+      backdropName: "Raspberry",
+      symbolName: "Pearl"
+    });
+  });
 });
 
 describe("addTelegramNftGiftFromMessage", () => {

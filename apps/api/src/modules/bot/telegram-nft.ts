@@ -54,7 +54,7 @@ function metaContent(html: string, property: string) {
 function parseDescriptionFields(description: string) {
   const fields: Record<string, string> = {};
   for (const line of description.split(/\r?\n/)) {
-    const match = line.match(/^\s*(Model|Backdrop|Symbol):\s*(.+?)\s*$/i);
+    const match = line.match(/^\s*(Model|Backdrop|Symbol)\s*[:|]\s*(.+?)\s*$/i);
     if (!match) continue;
     fields[toTitleCase(match[1])] = stripRarity(match[2]);
   }
