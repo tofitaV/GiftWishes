@@ -1,9 +1,17 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { api, TELEGRAM_INIT_DATA_HEADER } from "./api";
+import { api, resolveApiBase, TELEGRAM_INIT_DATA_HEADER } from "./api";
 
 describe("api", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it("uses the Vercel API rewrite by default in production", () => {
+    expect(resolveApiBase({ nodeEnv: "production" })).toBe("/api");
+  });
+
+  it("keeps localhost as the default API base outside production", () => {
+    expect(resolveApiBase({ nodeEnv: "development" })).toBe("http://localhost:4000/api");
   });
 
   it("adds the ngrok skip warning header to backend requests", async () => {

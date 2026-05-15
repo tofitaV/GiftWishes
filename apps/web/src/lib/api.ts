@@ -1,4 +1,22 @@
-export const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000/api";
+type ResolveApiBaseOptions = {
+  configuredBaseUrl?: string;
+  nodeEnv?: string;
+};
+
+export function resolveApiBase({
+  configuredBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL,
+  nodeEnv = process.env.NODE_ENV
+}: ResolveApiBaseOptions = {}) {
+  const trimmedBaseUrl = configuredBaseUrl?.trim().replace(/\/$/, "");
+
+  if (trimmedBaseUrl) {
+    return trimmedBaseUrl;
+  }
+
+  return nodeEnv === "production" ? "/api" : "http://localhost:4000/api";
+}
+
+export const API_BASE = resolveApiBase();
 export const AUTH_TOKEN_STORAGE_KEY = "gift-wishes-token";
 export const NGROK_SKIP_BROWSER_WARNING_HEADER = "ngrok-skip-browser-warning";
 export const NGROK_SKIP_BROWSER_WARNING_VALUE = "69420";
