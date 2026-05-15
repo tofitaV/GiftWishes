@@ -23,3 +23,10 @@ Telegram Mini App for wishlists of collectible Telegram gifts.
 3. Run `npm run prisma:generate`.
 4. Run `npm run dev -w @gift-wishes/api` and `npm run dev -w @gift-wishes/web`.
 
+## Local tunnel
+
+Expose the local API on port `4000` with:
+
+```bash
+npm run ngrok:api
+```

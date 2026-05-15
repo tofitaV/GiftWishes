@@ -107,7 +107,11 @@ describe("formatInlineWishlistMessage", () => {
       text: "Открыть wishlist",
       url: "https://t.me/giftwishes_bot?startapp=profile-user-id"
     });
-    expect(result.input_message_content).toEqual({ message_text: "Wishlist @alice", entities: undefined });
+    expect(result.input_message_content).toEqual({
+      message_text: "Wishlist @alice",
+      entities: undefined,
+      link_preview_options: { is_disabled: true }
+    });
     expect(JSON.stringify(result)).not.toContain("web_app");
   });
 

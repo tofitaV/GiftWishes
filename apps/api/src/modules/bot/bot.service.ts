@@ -42,6 +42,7 @@ type InlineWishlistResult = {
   input_message_content: {
     message_text: string;
     entities?: TelegramMessageEntity[];
+    link_preview_options: { is_disabled: true };
   };
   reply_markup: {
     inline_keyboard: [[{ text: string; url: string }]];
@@ -241,7 +242,8 @@ export function createInlineWishlistResult({ wishlistLink, message, itemCount }:
     description: itemCount > 0 ? `${itemCount} подарков в списке` : "Wishlist пока пуст",
     input_message_content: {
       message_text: message.text,
-      entities: messageEntitiesOption(message)
+      entities: messageEntitiesOption(message),
+      link_preview_options: { is_disabled: true }
     },
     reply_markup: {
       inline_keyboard: [[{ text: itemCount > 0 ? "Открыть wishlist" : "Добавить подарки", url: wishlistLink }]]
@@ -375,7 +377,7 @@ export class BotService implements OnModuleInit {
       if (ownerUserId) {
         const owner = await this.prisma.user.findUnique({
           where: { id: ownerUserId },
-          include: { wishlistItems: { orderBy: { createdAt: "desc" } } }
+          include: { wishlistItems: { orderBy: { createdAt: "asc" } } }
         });
 
         if (!owner) {
@@ -408,7 +410,7 @@ export class BotService implements OnModuleInit {
       const from = ctx.from;
       const user = await this.prisma.user.findUnique({
         where: { telegramId: String(from.id) },
-        include: { wishlistItems: { orderBy: { createdAt: "desc" } } }
+        include: { wishlistItems: { orderBy: { createdAt: "asc" } } }
       });
       if (!user) return ctx.answerInlineQuery([], { cache_time: 0 });
 
@@ -436,7 +438,7 @@ export class BotService implements OnModuleInit {
         findUserByTelegramId: (telegramId) =>
           this.prisma.user.findUnique({
             where: { telegramId },
-            include: { wishlistItems: { orderBy: { createdAt: "desc" } } }
+            include: { wishlistItems: { orderBy: { createdAt: "asc" } } }
           }),
         createWishlistLink: (userId) => this.botWishlistUrl(userId),
         editMessageText: (text, extra) => ctx.editMessageText(text, extra)
@@ -456,6 +458,7 @@ export class BotService implements OnModuleInit {
           const reply = formatOwnWishlistReply({ items: wishlist.items });
           await ctx.reply(reply.text, {
             entities: messageEntitiesOption(reply),
+            link_preview_options: { is_disabled: true },
             reply_markup: createWishlistGiftLinksReplyMarkup({ items: wishlist.items })
           });
           return;

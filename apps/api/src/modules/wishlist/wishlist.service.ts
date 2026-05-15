@@ -1,8 +1,10 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { FREE_WISHLIST_SLOTS } from "@gift-wishes/shared";
 import { TelegramAuthDataStore } from "../auth/telegram-auth-data.store.js";
+import { GiftSatelliteService } from "../gift-satellite/gift-satellite.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { SeeTgGiftsService } from "./see-tg-gifts.service.js";
+import { TelegramNftLookupService } from "./telegram-nft-lookup.service.js";
 
 type CreateWishlistItemInput = {
   collectionName: string;
@@ -18,13 +20,15 @@ export class WishlistService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly seeTgGifts: SeeTgGiftsService,
-    private readonly telegramAuthDataStore: TelegramAuthDataStore
+    private readonly telegramAuthDataStore: TelegramAuthDataStore,
+    private readonly giftSatellite: GiftSatelliteService,
+    private readonly telegramNftLookup: TelegramNftLookupService
   ) {}
 
   async getMine(userId: string) {
     const [user, items] = await Promise.all([
       this.prisma.user.findUniqueOrThrow({ where: { id: userId } }),
-      this.prisma.wishlistItem.findMany({ where: { ownerUserId: userId }, orderBy: { createdAt: "desc" } })
+      this.prisma.wishlistItem.findMany({ where: { ownerUserId: userId }, orderBy: { createdAt: "asc" } })
     ]);
 
     return {
@@ -36,7 +40,7 @@ export class WishlistService {
   async getPublic(userId: string) {
     const owner = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: { wishlistItems: { orderBy: { createdAt: "desc" } } }
+      include: { wishlistItems: { orderBy: { createdAt: "asc" } } }
     });
     if (!owner || !owner.username) throw new NotFoundException("Wishlist owner not found");
 
@@ -55,14 +59,7 @@ export class WishlistService {
       throw new BadRequestException("Wishlist slot limit reached. Buy an extra slot for 50 Telegram Stars.");
     }
 
-    const resolvedGift = input.sourceUrl
-      ? null
-      : await this.seeTgGifts.findFirstGift({
-        collectionName: input.collectionName,
-        modelName: input.modelName,
-        backdropName: input.backdropName,
-        telegramAuthData: input.telegramAuthData || this.telegramAuthDataStore.get(userId)
-      });
+    const resolvedGift = input.sourceUrl ? null : await this.resolveGiftSource(userId, input);
 
     return this.prisma.wishlistItem.create({
       data: {
@@ -74,6 +71,46 @@ export class WishlistService {
         sourceUrl: input.sourceUrl || resolvedGift?.sourceUrl || null
       }
     });
+  }
+
+  private async resolveGiftSource(userId: string, input: CreateWishlistItemInput) {
+    const seeTgGift = await this.seeTgGifts.findFirstGift({
+      collectionName: input.collectionName,
+      modelName: input.modelName,
+      backdropName: input.backdropName,
+      telegramAuthData: input.telegramAuthData || this.telegramAuthDataStore.get(userId)
+    });
+    if (seeTgGift) return seeTgGift;
+
+    const listings = await this.giftSatellite
+      .searchMarket("telegram", input.collectionName, {
+        modelName: input.modelName,
+        backdropName: input.backdropName
+      })
+      .catch(() => []);
+    const fallbackListings =
+      listings.length === 0 && input.backdropName
+        ? await this.giftSatellite
+            .searchMarket("telegram", input.collectionName, {
+              modelName: input.modelName,
+              backdropName: null
+            })
+            .catch(() => [])
+        : [];
+    const [listing] = listings.length > 0 ? listings : fallbackListings;
+
+    if (!listing) {
+      return this.telegramNftLookup.findFirstGift({
+        collectionName: input.collectionName,
+        modelName: input.modelName,
+        backdropName: input.backdropName
+      });
+    }
+
+    return {
+      sourceUrl: listing.link || `https://t.me/nft/${listing.slug}`,
+      backdropName: listing.backdropName
+    };
   }
 
   async remove(userId: string, id: string) {

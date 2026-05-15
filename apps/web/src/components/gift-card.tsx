@@ -29,7 +29,7 @@ export function GiftCard({ item, canDelete, onDelete, onBuy }: Props) {
       <div className="button-row">
         {onBuy ? (
           <button className="button" type="button" onClick={() => onBuy(item.id)}>
-            Купить
+            Подарить
           </button>
         ) : null}
         {canDelete ? (

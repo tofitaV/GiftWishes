@@ -45,7 +45,7 @@ export function PublicWishlistClient({ userId }: { userId: string }) {
       <header className="topbar">
         <div>
           <h1 className="title">{wishlist ? `Wishlist @${wishlist.owner.username}` : "Gift Wishes"}</h1>
-          <div className="muted">Подарки, которые можно купить</div>
+          <div className="muted">Подарки, которые можно подарить</div>
         </div>
       </header>
       {message ? <p className="card">{message}</p> : null}
