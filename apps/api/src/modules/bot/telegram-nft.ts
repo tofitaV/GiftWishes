@@ -20,11 +20,11 @@ export function extractTelegramNftUrl(text: string) {
 export function parseTelegramNftGift(html: string, url: string): TelegramNftGift {
   const title = metaContent(html, "og:title") ?? "";
   const description = metaContent(html, "og:description") ?? metaContent(html, "twitter:description") ?? "";
-  const fields = parseDescriptionFields(description);
+  const fields = { ...parseHtmlFields(html), ...parseDescriptionFields(description) };
   const collectionName = collectionFromTitle(title) ?? collectionFromUrl(url);
 
   if (!collectionName || !fields.Model) {
-    throw new Error("Telegram NFT metadata is incomplete");
+    throw new Error(`Telegram NFT metadata is incomplete for ${url}`);
   }
 
   return {
@@ -72,6 +72,19 @@ function parseDescriptionFields(description: string) {
   return fields;
 }
 
+function parseHtmlFields(html: string) {
+  const fields: Record<string, string> = {};
+
+  for (const field of ["Model", "Backdrop", "Symbol"]) {
+    const match = html.match(new RegExp(`<th[^>]*>\\s*${field}\\s*</th>\\s*<td[^>]*>([\\s\\S]*?)</td>`, "i"));
+    if (!match?.[1]) continue;
+
+    fields[field] = stripRarity(stripHtml(match[1]));
+  }
+
+  return fields;
+}
+
 function collectionFromTitle(title: string) {
   const match = title.match(/^(.+?)\s+#\d+\s*$/);
   return match?.[1]?.trim() || null;
@@ -89,6 +102,10 @@ function splitCompactName(value: string) {
 
 function stripRarity(value: string) {
   return value.replace(/\s+\d+(?:[.,]\d+)?%\s*$/, "").trim();
+}
+
+function stripHtml(value: string) {
+  return decodeHtml(value.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim());
 }
 
 function toTitleCase(value: string) {

@@ -84,6 +84,26 @@ Symbol | Pearl 0.7%" property="og:description">`,
       symbolName: "Pearl"
     });
   });
+
+  it("parses Telegram NFT fields from the visible details table", () => {
+    expect(
+      parseTelegramNftGift(
+        `<table class="tgme_gift_table">
+          <tr><th>Owner</th><td>MR</td></tr>
+          <tr><th>Model</th><td>Bronze <mark>3%</mark></td></tr>
+          <tr><th>Backdrop</th><td>Raspberry <mark>1.2%</mark></td></tr>
+          <tr><th>Symbol</th><td>Pearl <mark>0.7%</mark></td></tr>
+          <tr><th>Quantity</th><td>98 580/124 608 issued</td></tr>
+        </table>`,
+        "https://t.me/nft/VictoryMedal-2808"
+      )
+    ).toEqual({
+      collectionName: "Victory Medal",
+      modelName: "Bronze",
+      backdropName: "Raspberry",
+      symbolName: "Pearl"
+    });
+  });
 });
 
 describe("addTelegramNftGiftFromMessage", () => {
