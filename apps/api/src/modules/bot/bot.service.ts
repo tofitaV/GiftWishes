@@ -85,11 +85,14 @@ type InlineDeleteGiftResult = {
   id: string;
   title: string;
   description: string;
-  thumbnail_url?: string;
+  thumbnail_url: string;
   input_message_content: {
     message_text: string;
     link_preview_options: { is_disabled: true };
     disable_web_page_preview: true;
+  };
+  reply_markup: {
+    inline_keyboard: [[{ text: string; url: string }]];
   };
 };
 
@@ -116,7 +119,8 @@ const INLINE_HELP_RESULT_ID = "help";
 const INLINE_DELETE_GIFT_RESULT_ID = "delete_gift";
 const INLINE_WISHLIST_THUMBNAIL_URL = "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f381.png";
 const INLINE_ADD_THUMBNAIL_URL = "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/2795.png";
-const INLINE_HELP_THUMBNAIL_URL = "https://upload.wikimedia.org/wikipedia/commons/thumb/4/43/OOjs_UI_icon_help-ltr.svg/120px-OOjs_UI_icon_help-ltr.svg.png";
+const INLINE_DELETE_THUMBNAIL_URL = "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/2796.png";
+const INLINE_HELP_THUMBNAIL_URL = "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/2753.png";
 
 export function formatInlineWishlistMessage({ username, items }: { username: string | null; items: InlineWishlistItem[] }) {
   return formatInlineWishlistReply({ username, items }).text;
@@ -283,7 +287,7 @@ export function formatHelpMessage() {
     "2. Другие пользователи смогут открыть твой профиль и подарить подарок(пока не реализовано).",
     "",
     "Как добавить подарок:",
-    "Отправь боту ссылку на Telegram NFT, например t.me/nft/PlushPepe-123, или добавь подарок в Mini App.",
+    "Напиши в чате @giftwishes_bot и вставь ссылку на подарок. Выбери \"Добавить подарок в wishlist\".",
     "",
     "Как показать подарки в чате:",
     "Напиши /wishlist, список или показать список. Также можно вызвать бота через @giftwishes_bot и выбрать результат \"Показать свой wishlist\".",
@@ -369,7 +373,7 @@ export function createInlineHelpResult(): InlineHelpResult {
   };
 }
 
-export function createInlineDeleteGiftResult({ itemNumber, sourceUrl }: { itemNumber?: number; sourceUrl?: string }): InlineDeleteGiftResult {
+export function createInlineDeleteGiftResult({ itemNumber, sourceUrl, wishlistLink }: { itemNumber?: number; sourceUrl?: string; wishlistLink: string }): InlineDeleteGiftResult {
   const title = sourceUrl ? "Удалить подарок из wishlist" : `Удалить подарок #${itemNumber}`;
   const description = sourceUrl ?? `Удалить подарок под номером ${itemNumber} из wishlist`;
   const messageText = sourceUrl ? "Удаляю подарок из wishlist..." : `Удаляю подарок #${itemNumber} из wishlist...`;
@@ -379,10 +383,14 @@ export function createInlineDeleteGiftResult({ itemNumber, sourceUrl }: { itemNu
     id: INLINE_DELETE_GIFT_RESULT_ID,
     title,
     description,
+    thumbnail_url: INLINE_DELETE_THUMBNAIL_URL,
     input_message_content: {
       message_text: messageText,
       link_preview_options: { is_disabled: true },
       disable_web_page_preview: true
+    },
+    reply_markup: {
+      inline_keyboard: [[{ text: "Открыть wishlist", url: wishlistLink }]]
     }
   };
 }
@@ -556,7 +564,8 @@ export class BotService implements OnModuleInit {
       const from = ctx.from;
       const itemNumberToRemove = parseWishlistItemRemovalCommand(ctx.inlineQuery.query ?? "");
       if (itemNumberToRemove) {
-        return ctx.answerInlineQuery([createInlineDeleteGiftResult({ itemNumber: itemNumberToRemove }), createInlineHelpResult()], {
+        const user = await this.upsertTelegramUser(from);
+        return ctx.answerInlineQuery([createInlineDeleteGiftResult({ itemNumber: itemNumberToRemove, wishlistLink: this.botWishlistUrl(user.id) }), createInlineHelpResult()], {
           cache_time: 0,
           is_personal: true
         });
@@ -571,7 +580,7 @@ export class BotService implements OnModuleInit {
               wishlistLink: this.botWishlistUrl(user.id),
               sourceUrl
             }),
-            createInlineDeleteGiftResult({ sourceUrl }),
+            createInlineDeleteGiftResult({ sourceUrl, wishlistLink: this.botWishlistUrl(user.id) }),
             createInlineHelpResult()
           ],
           { cache_time: 0, is_personal: true }

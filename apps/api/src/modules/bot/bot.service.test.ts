@@ -361,7 +361,7 @@ describe("help command", () => {
       id: "help",
       title: "Помощь",
       description: "Как пользоваться Gift Wishes",
-      thumbnail_url: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/43/OOjs_UI_icon_help-ltr.svg/120px-OOjs_UI_icon_help-ltr.svg.png",
+      thumbnail_url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/2753.png",
       input_message_content: {
         message_text: formatHelpMessage(),
         link_preview_options: { is_disabled: true },
@@ -398,15 +398,24 @@ describe("inline gift add", () => {
 
 describe("inline gift delete", () => {
   it("creates an inline result for deleting a wishlist gift by source link", () => {
-    expect(createInlineDeleteGiftResult({ sourceUrl: "https://t.me/nft/LunarSnake-141449" })).toEqual({
+    expect(
+      createInlineDeleteGiftResult({
+        sourceUrl: "https://t.me/nft/LunarSnake-141449",
+        wishlistLink: "https://t.me/giftwishes_bot?startapp=profile-user-id"
+      })
+    ).toEqual({
       type: "article",
       id: "delete_gift",
       title: "Удалить подарок из wishlist",
       description: "https://t.me/nft/LunarSnake-141449",
+      thumbnail_url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/2796.png",
       input_message_content: {
         message_text: "Удаляю подарок из wishlist...",
         link_preview_options: { is_disabled: true },
         disable_web_page_preview: true
+      },
+      reply_markup: {
+        inline_keyboard: [[{ text: "Открыть wishlist", url: "https://t.me/giftwishes_bot?startapp=profile-user-id" }]]
       }
     });
   });
