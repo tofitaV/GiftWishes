@@ -302,6 +302,15 @@ export function parseWishlistItemNumberQuery(text: string) {
   return Number.isInteger(itemNumber) && itemNumber >= 1 && itemNumber <= 100 ? itemNumber : null;
 }
 
+export function parseInlineUsernameQuery(text: string) {
+  const normalized = text.trim();
+  const match = normalized.match(/^@([A-Za-z0-9_]{5,32})$/);
+  if (!match) return null;
+
+  const username = match[1];
+  return username.toLowerCase() === DEFAULT_BOT_USERNAME.toLowerCase() ? null : username;
+}
+
 export function formatHelpMessage() {
   return [
     "Gift Wishes — бот для хранения желаемых подарков.",
@@ -363,6 +372,35 @@ export function createInlineWishlistResult({ wishlistLink, message, itemCount }:
     },
     reply_markup: {
       inline_keyboard: [[{ text: itemCount > 0 ? "Открыть wishlist" : "Добавить подарки", url: wishlistLink }]]
+    }
+  };
+}
+
+export function createInlineUserWishlistResult({
+  username,
+  wishlistLink,
+  message,
+  itemCount
+}: {
+  username: string;
+  wishlistLink: string;
+  message: FormattedTelegramMessage;
+  itemCount: number;
+}): InlineWishlistResult {
+  return {
+    type: "article",
+    id: `wishlist_user_${username}`,
+    title: `Показать wishlist @${username}`,
+    description: itemCount > 0 ? `${itemCount} подарков в списке` : "Wishlist пока пуст",
+    thumbnail_url: INLINE_WISHLIST_THUMBNAIL_URL,
+    input_message_content: {
+      message_text: message.text,
+      entities: messageEntitiesOption(message),
+      link_preview_options: { is_disabled: true },
+      disable_web_page_preview: true
+    },
+    reply_markup: {
+      inline_keyboard: [[{ text: `Открыть wishlist @${username}`, url: wishlistLink }]]
     }
   };
 }
@@ -637,6 +675,36 @@ export class BotService implements OnModuleInit {
               sourceUrl
             }),
             createInlineDeleteGiftResult({ sourceUrl, wishlistLink: this.botWishlistUrl(user.id) }),
+            createInlineHelpResult()
+          ],
+          { cache_time: 0, is_personal: true }
+        );
+      }
+
+      const usernameToShow = parseInlineUsernameQuery(ctx.inlineQuery.query ?? "");
+      if (usernameToShow) {
+        const owner = await this.prisma.user.findFirst({
+          where: { username: { equals: usernameToShow, mode: "insensitive" } },
+          include: { wishlistItems: { orderBy: { createdAt: "asc" } } }
+        });
+
+        if (!owner?.username) {
+          return ctx.answerInlineQuery([createInlineHelpResult()], { cache_time: 0, is_personal: true });
+        }
+
+        const message = formatInlineWishlistReply({
+          username: owner.username,
+          items: owner.wishlistItems
+        });
+
+        return ctx.answerInlineQuery(
+          [
+            createInlineUserWishlistResult({
+              username: owner.username,
+              wishlistLink: this.botWishlistUrl(owner.id),
+              message,
+              itemCount: owner.wishlistItems.length
+            }),
             createInlineHelpResult()
           ],
           { cache_time: 0, is_personal: true }

@@ -4,6 +4,7 @@ import {
   createInlineAddGiftResult,
   createInlineDeleteGiftResult,
   createInlineGiftLinkResult,
+  createInlineUserWishlistResult,
   createInlineHelpResult,
   createInlineWishlistResult,
   createWishlistGiftLinksReplyMarkup,
@@ -18,6 +19,7 @@ import {
   isOwnWishlistCommand,
   parseWishlistItemRemovalCommand,
   parseWishlistItemNumberQuery,
+  parseInlineUsernameQuery,
   parseWishlistStartPayload
 } from "./bot.service.js";
 
@@ -123,6 +125,43 @@ describe("formatInlineWishlistMessage", () => {
       disable_web_page_preview: true
     });
     expect(JSON.stringify(result)).not.toContain("web_app");
+  });
+
+  it("parses inline username queries for showing another user's wishlist", () => {
+    expect(parseInlineUsernameQuery("@holdkaspa")).toBe("holdkaspa");
+    expect(parseInlineUsernameQuery(" @HoldKaspa ")).toBe("HoldKaspa");
+    expect(parseInlineUsernameQuery("holdkaspa")).toBeNull();
+    expect(parseInlineUsernameQuery("@giftwishes_bot")).toBeNull();
+    expect(parseInlineUsernameQuery("@bad-user")).toBeNull();
+  });
+
+  it("creates an inline result for another user's wishlist", () => {
+    const result = createInlineUserWishlistResult({
+      username: "holdkaspa",
+      wishlistLink: "https://t.me/giftwishes_bot?startapp=profile-user-id",
+      message: {
+        text: "Wishlist @holdkaspa\n\n1. Diamond Ring - Twilight Electric Indigo",
+        entities: []
+      },
+      itemCount: 1
+    });
+
+    expect(result).toEqual({
+      type: "article",
+      id: "wishlist_user_holdkaspa",
+      title: "Показать wishlist @holdkaspa",
+      description: "1 подарков в списке",
+      thumbnail_url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f381.png",
+      input_message_content: {
+        message_text: "Wishlist @holdkaspa\n\n1. Diamond Ring - Twilight Electric Indigo",
+        entities: undefined,
+        link_preview_options: { is_disabled: true },
+        disable_web_page_preview: true
+      },
+      reply_markup: {
+        inline_keyboard: [[{ text: "Открыть wishlist @holdkaspa", url: "https://t.me/giftwishes_bot?startapp=profile-user-id" }]]
+      }
+    });
   });
 
   it("edits a chosen inline wishlist result with explicit custom emoji entities", async () => {
