@@ -39,10 +39,12 @@ type InlineWishlistResult = {
   id: string;
   title: string;
   description: string;
+  thumbnail_url: string;
   input_message_content: {
     message_text: string;
     entities?: TelegramMessageEntity[];
     link_preview_options: { is_disabled: true };
+    disable_web_page_preview: true;
   };
   reply_markup: {
     inline_keyboard: [[{ text: string; url: string }]];
@@ -58,6 +60,7 @@ type InlineAddGiftResult = {
   input_message_content: {
     message_text: string;
     link_preview_options: { is_disabled: true };
+    disable_web_page_preview: true;
   };
   reply_markup: {
     inline_keyboard: [[{ text: string; url: string }]];
@@ -73,6 +76,20 @@ type InlineHelpResult = {
   input_message_content: {
     message_text: string;
     link_preview_options: { is_disabled: true };
+    disable_web_page_preview: true;
+  };
+};
+
+type InlineDeleteGiftResult = {
+  type: "article";
+  id: string;
+  title: string;
+  description: string;
+  thumbnail_url?: string;
+  input_message_content: {
+    message_text: string;
+    link_preview_options: { is_disabled: true };
+    disable_web_page_preview: true;
   };
 };
 
@@ -96,8 +113,10 @@ const DEFAULT_BOT_USERNAME = "giftwishes_bot";
 const INLINE_WISHLIST_RESULT_ID = "wishlist";
 const INLINE_ADD_GIFT_RESULT_ID = "add_nft";
 const INLINE_HELP_RESULT_ID = "help";
+const INLINE_DELETE_GIFT_RESULT_ID = "delete_gift";
+const INLINE_WISHLIST_THUMBNAIL_URL = "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f381.png";
 const INLINE_ADD_THUMBNAIL_URL = "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/2795.png";
-const INLINE_HELP_THUMBNAIL_URL = "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/2753.png";
+const INLINE_HELP_THUMBNAIL_URL = "https://upload.wikimedia.org/wikipedia/commons/thumb/4/43/OOjs_UI_icon_help-ltr.svg/120px-OOjs_UI_icon_help-ltr.svg.png";
 
 export function formatInlineWishlistMessage({ username, items }: { username: string | null; items: InlineWishlistItem[] }) {
   return formatInlineWishlistReply({ username, items }).text;
@@ -248,7 +267,7 @@ export function isHelpCommand(text: string) {
 
 export function parseWishlistItemRemovalCommand(text: string) {
   const normalized = text.trim().toLowerCase();
-  const match = normalized.match(/^(?:\/(?:remove|delete)(?:@\w+)?|удалить)\s+(\d+)$/);
+  const match = normalized.match(/^(?:(?:\/)?(?:remove|delete)(?:@\w+)?|удалить)\s+(\d+)$/);
   if (!match) return null;
 
   const itemNumber = Number(match[1]);
@@ -270,7 +289,7 @@ export function formatHelpMessage() {
     "Напиши /wishlist, список или показать список. Также можно вызвать бота через @giftwishes_bot и выбрать результат \"Показать свой wishlist\".",
     "",
     "Как удалить подарок:",
-    "Напиши удалить 2 или /remove 2, где 2 — номер подарка в твоем списке."
+    "В чате напиши @giftwishes_bot и вставь ссылку на подарок. Выбери результат \"Удалить подарок из wishlist\"."
   ].join("\n");
 }
 
@@ -304,10 +323,12 @@ export function createInlineWishlistResult({ wishlistLink, message, itemCount }:
     id: INLINE_WISHLIST_RESULT_ID,
     title: "Показать свой wishlist",
     description: itemCount > 0 ? `${itemCount} подарков в списке` : "Wishlist пока пуст",
+    thumbnail_url: INLINE_WISHLIST_THUMBNAIL_URL,
     input_message_content: {
       message_text: message.text,
       entities: messageEntitiesOption(message),
-      link_preview_options: { is_disabled: true }
+      link_preview_options: { is_disabled: true },
+      disable_web_page_preview: true
     },
     reply_markup: {
       inline_keyboard: [[{ text: itemCount > 0 ? "Открыть wishlist" : "Добавить подарки", url: wishlistLink }]]
@@ -324,7 +345,8 @@ export function createInlineAddGiftResult({ wishlistLink, sourceUrl }: { wishlis
     thumbnail_url: INLINE_ADD_THUMBNAIL_URL,
     input_message_content: {
       message_text: "Добавляю подарок в wishlist...",
-      link_preview_options: { is_disabled: true }
+      link_preview_options: { is_disabled: true },
+      disable_web_page_preview: true
     },
     reply_markup: {
       inline_keyboard: [[{ text: "Открыть wishlist", url: wishlistLink }]]
@@ -341,7 +363,26 @@ export function createInlineHelpResult(): InlineHelpResult {
     thumbnail_url: INLINE_HELP_THUMBNAIL_URL,
     input_message_content: {
       message_text: formatHelpMessage(),
-      link_preview_options: { is_disabled: true }
+      link_preview_options: { is_disabled: true },
+      disable_web_page_preview: true
+    }
+  };
+}
+
+export function createInlineDeleteGiftResult({ itemNumber, sourceUrl }: { itemNumber?: number; sourceUrl?: string }): InlineDeleteGiftResult {
+  const title = sourceUrl ? "Удалить подарок из wishlist" : `Удалить подарок #${itemNumber}`;
+  const description = sourceUrl ?? `Удалить подарок под номером ${itemNumber} из wishlist`;
+  const messageText = sourceUrl ? "Удаляю подарок из wishlist..." : `Удаляю подарок #${itemNumber} из wishlist...`;
+
+  return {
+    type: "article",
+    id: INLINE_DELETE_GIFT_RESULT_ID,
+    title,
+    description,
+    input_message_content: {
+      message_text: messageText,
+      link_preview_options: { is_disabled: true },
+      disable_web_page_preview: true
     }
   };
 }
@@ -355,7 +396,15 @@ export async function editChosenInlineWishlistResult({
   chosenInlineResult: ChosenInlineWishlistResult;
   findUserByTelegramId: (telegramId: string) => Promise<{ id: string; username: string | null; wishlistItems: InlineWishlistItem[] } | null>;
   createWishlistLink: (userId: string) => string;
-  editMessageText: (text: string, extra: { entities?: TelegramMessageEntity[]; reply_markup: InlineWishlistResult["reply_markup"] }) => Promise<unknown>;
+  editMessageText: (
+    text: string,
+    extra: {
+      entities?: TelegramMessageEntity[];
+      link_preview_options: { is_disabled: true };
+      disable_web_page_preview: true;
+      reply_markup: InlineWishlistResult["reply_markup"];
+    }
+  ) => Promise<unknown>;
 }) {
   if (chosenInlineResult.result_id !== INLINE_WISHLIST_RESULT_ID) return false;
   if (!chosenInlineResult.inline_message_id) return false;
@@ -375,6 +424,8 @@ export async function editChosenInlineWishlistResult({
 
   await editMessageText(message.text, {
     entities: messageEntitiesOption(message),
+    link_preview_options: { is_disabled: true },
+    disable_web_page_preview: true,
     reply_markup: result.reply_markup
   });
   return true;
@@ -503,6 +554,14 @@ export class BotService implements OnModuleInit {
 
     this.bot.on("inline_query", async (ctx) => {
       const from = ctx.from;
+      const itemNumberToRemove = parseWishlistItemRemovalCommand(ctx.inlineQuery.query ?? "");
+      if (itemNumberToRemove) {
+        return ctx.answerInlineQuery([createInlineDeleteGiftResult({ itemNumber: itemNumberToRemove }), createInlineHelpResult()], {
+          cache_time: 0,
+          is_personal: true
+        });
+      }
+
       const sourceUrl = extractTelegramNftUrl(ctx.inlineQuery.query ?? "");
       if (sourceUrl) {
         const user = await this.upsertTelegramUser(from);
@@ -512,6 +571,7 @@ export class BotService implements OnModuleInit {
               wishlistLink: this.botWishlistUrl(user.id),
               sourceUrl
             }),
+            createInlineDeleteGiftResult({ sourceUrl }),
             createInlineHelpResult()
           ],
           { cache_time: 0, is_personal: true }
@@ -545,6 +605,42 @@ export class BotService implements OnModuleInit {
     });
 
     this.bot.on("chosen_inline_result", async (ctx) => {
+      if (ctx.chosenInlineResult.result_id === INLINE_DELETE_GIFT_RESULT_ID) {
+        const query = ctx.chosenInlineResult.query ?? "";
+        const sourceUrlToRemove = extractTelegramNftUrl(query);
+        const itemNumberToRemove = parseWishlistItemRemovalCommand(query);
+        if (!sourceUrlToRemove && !itemNumberToRemove) return;
+
+        try {
+          const user = await this.upsertTelegramUser(ctx.chosenInlineResult.from);
+          const wishlist = await this.wishlist.getMine(user.id);
+          const item = sourceUrlToRemove ? wishlist.items.find((wishlistItem) => wishlistItem.sourceUrl === sourceUrlToRemove) : wishlist.items[(itemNumberToRemove ?? 1) - 1];
+          if (!item) {
+            if (ctx.chosenInlineResult.inline_message_id) {
+              await ctx.editMessageText("Подарок не найден в твоем wishlist.", {
+                link_preview_options: { is_disabled: true }
+              });
+            }
+            return;
+          }
+
+          await this.wishlist.remove(user.id, item.id);
+          if (ctx.chosenInlineResult.inline_message_id) {
+            await ctx.editMessageText(`Удалено из wishlist: ${item.collectionName} - ${item.modelName}`, {
+              link_preview_options: { is_disabled: true }
+            });
+          }
+        } catch (error) {
+          this.logger.warn("Telegram NFT inline wishlist removal failed", error instanceof Error ? error.stack : String(error));
+          if (ctx.chosenInlineResult.inline_message_id) {
+            await ctx.editMessageText(error instanceof Error ? error.message : "Не удалось удалить гифт из wishlist.", {
+              link_preview_options: { is_disabled: true }
+            });
+          }
+        }
+        return;
+      }
+
       if (ctx.chosenInlineResult.result_id === INLINE_ADD_GIFT_RESULT_ID) {
         const query = ctx.chosenInlineResult.query ?? "";
         try {
@@ -557,13 +653,16 @@ export class BotService implements OnModuleInit {
 
           if (createdGift && ctx.chosenInlineResult.inline_message_id) {
             await ctx.editMessageText(this.formatAddedGiftMessage(createdGift), {
+              link_preview_options: { is_disabled: true },
               reply_markup: { inline_keyboard: [[{ text: "Открыть wishlist", url: this.botWishlistUrl(user.id) }]] }
             });
           }
         } catch (error) {
           this.logger.warn("Telegram NFT inline wishlist import failed", error instanceof Error ? error.stack : String(error));
           if (ctx.chosenInlineResult.inline_message_id) {
-            await ctx.editMessageText(error instanceof Error ? error.message : "Не удалось добавить гифт в wishlist.");
+            await ctx.editMessageText(error instanceof Error ? error.message : "Не удалось добавить гифт в wishlist.", {
+              link_preview_options: { is_disabled: true }
+            });
           }
         }
         return;
