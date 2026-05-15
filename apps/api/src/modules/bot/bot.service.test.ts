@@ -1,6 +1,7 @@
 ﻿import { describe, expect, it } from "vitest";
 import {
   createBotWishlistDeepLink,
+  createInlineAddGiftResult,
   createInlineWishlistResult,
   createWishlistGiftLinksReplyMarkup,
   createWishlistProfileReplyMarkup,
@@ -12,6 +13,7 @@ import {
   formatOwnWishlistReply,
   isHelpCommand,
   isOwnWishlistCommand,
+  parseWishlistItemRemovalCommand,
   parseWishlistStartPayload
 } from "./bot.service.js";
 
@@ -344,5 +346,42 @@ describe("help command", () => {
     expect(message).toContain("Как показать подарки в чате");
     expect(message).toContain("/wishlist");
     expect(message).toContain("Показать свой wishlist");
+  });
+});
+
+describe("inline gift add", () => {
+  it("creates an inline result for adding a Telegram NFT gift to wishlist", () => {
+    expect(
+      createInlineAddGiftResult({
+        wishlistLink: "https://t.me/giftwishes_bot?startapp=profile-user-id",
+        sourceUrl: "https://t.me/nft/LunarSnake-141449"
+      })
+    ).toEqual({
+      type: "article",
+      id: "add_nft",
+      title: "Добавить подарок в wishlist",
+      description: "https://t.me/nft/LunarSnake-141449",
+      input_message_content: {
+        message_text: "Добавляю подарок в wishlist...",
+        link_preview_options: { is_disabled: true }
+      },
+      reply_markup: {
+        inline_keyboard: [[{ text: "Открыть wishlist", url: "https://t.me/giftwishes_bot?startapp=profile-user-id" }]]
+      }
+    });
+  });
+});
+
+describe("parseWishlistItemRemovalCommand", () => {
+  it("parses remove commands by wishlist item number", () => {
+    expect(parseWishlistItemRemovalCommand("удалить 2")).toBe(2);
+    expect(parseWishlistItemRemovalCommand("/remove 3")).toBe(3);
+    expect(parseWishlistItemRemovalCommand("/delete@giftwishes_bot 4")).toBe(4);
+  });
+
+  it("rejects invalid remove commands", () => {
+    expect(parseWishlistItemRemovalCommand("удалить 0")).toBeNull();
+    expect(parseWishlistItemRemovalCommand("удалить abc")).toBeNull();
+    expect(parseWishlistItemRemovalCommand("список")).toBeNull();
   });
 });

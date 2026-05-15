@@ -5,7 +5,7 @@ import { PrismaService } from "../prisma/prisma.service.js";
 import { WishlistService } from "../wishlist/wishlist.service.js";
 import { lookupGiftBackdropEmoji } from "./gift-backdrop-emojis.js";
 import { lookupGiftModelEmoji } from "./gift-model-emojis.js";
-import { addTelegramNftGiftFromMessage, type TelegramNftGift } from "./telegram-nft.js";
+import { addTelegramNftGiftFromMessage, extractTelegramNftUrl, type TelegramNftGift } from "./telegram-nft.js";
 
 type InlineWishlistItem = {
   collectionName: string;
@@ -49,6 +49,20 @@ type InlineWishlistResult = {
   };
 };
 
+type InlineAddGiftResult = {
+  type: "article";
+  id: string;
+  title: string;
+  description: string;
+  input_message_content: {
+    message_text: string;
+    link_preview_options: { is_disabled: true };
+  };
+  reply_markup: {
+    inline_keyboard: [[{ text: string; url: string }]];
+  };
+};
+
 type WishlistProfileReplyMarkup = {
   inline_keyboard: [[{ text: string; web_app: { url: string } }]];
 };
@@ -67,6 +81,7 @@ const WISHLIST_START_PREFIX = "wishlist_";
 const WISHLIST_PROFILE_START_PREFIX = "profile-";
 const DEFAULT_BOT_USERNAME = "giftwishes_bot";
 const INLINE_WISHLIST_RESULT_ID = "wishlist";
+const INLINE_ADD_GIFT_RESULT_ID = "add_nft";
 
 export function formatInlineWishlistMessage({ username, items }: { username: string | null; items: InlineWishlistItem[] }) {
   return formatInlineWishlistReply({ username, items }).text;
@@ -215,6 +230,15 @@ export function isHelpCommand(text: string) {
   return /^\/help(?:@\w+)?$/.test(normalized) || normalized === "help" || normalized === "помощь";
 }
 
+export function parseWishlistItemRemovalCommand(text: string) {
+  const normalized = text.trim().toLowerCase();
+  const match = normalized.match(/^(?:\/(?:remove|delete)(?:@\w+)?|удалить)\s+(\d+)$/);
+  if (!match) return null;
+
+  const itemNumber = Number(match[1]);
+  return Number.isInteger(itemNumber) && itemNumber > 0 ? itemNumber : null;
+}
+
 export function formatHelpMessage() {
   return [
     "Gift Wishes — бот для хранения желаемых подарков.",
@@ -227,7 +251,10 @@ export function formatHelpMessage() {
     "Отправь боту ссылку на Telegram NFT, например t.me/nft/PlushPepe-123, или добавь подарок в Mini App.",
     "",
     "Как показать подарки в чате:",
-    "Напиши /wishlist, список или показать список. Также можно вызвать бота через @giftwishes_bot и выбрать результат \"Показать свой wishlist\"."
+    "Напиши /wishlist, список или показать список. Также можно вызвать бота через @giftwishes_bot и выбрать результат \"Показать свой wishlist\".",
+    "",
+    "Как удалить подарок:",
+    "Напиши удалить 2 или /remove 2, где 2 — номер подарка в твоем списке."
   ].join("\n");
 }
 
@@ -268,6 +295,22 @@ export function createInlineWishlistResult({ wishlistLink, message, itemCount }:
     },
     reply_markup: {
       inline_keyboard: [[{ text: itemCount > 0 ? "Открыть wishlist" : "Добавить подарки", url: wishlistLink }]]
+    }
+  };
+}
+
+export function createInlineAddGiftResult({ wishlistLink, sourceUrl }: { wishlistLink: string; sourceUrl: string }): InlineAddGiftResult {
+  return {
+    type: "article",
+    id: INLINE_ADD_GIFT_RESULT_ID,
+    title: "Добавить подарок в wishlist",
+    description: sourceUrl,
+    input_message_content: {
+      message_text: "Добавляю подарок в wishlist...",
+      link_preview_options: { is_disabled: true }
+    },
+    reply_markup: {
+      inline_keyboard: [[{ text: "Открыть wishlist", url: wishlistLink }]]
     }
   };
 }
@@ -429,6 +472,20 @@ export class BotService implements OnModuleInit {
 
     this.bot.on("inline_query", async (ctx) => {
       const from = ctx.from;
+      const sourceUrl = extractTelegramNftUrl(ctx.inlineQuery.query ?? "");
+      if (sourceUrl) {
+        const user = await this.upsertTelegramUser(from);
+        return ctx.answerInlineQuery(
+          [
+            createInlineAddGiftResult({
+              wishlistLink: this.botWishlistUrl(user.id),
+              sourceUrl
+            })
+          ],
+          { cache_time: 0, is_personal: true }
+        );
+      }
+
       const user = await this.prisma.user.findUnique({
         where: { telegramId: String(from.id) },
         include: { wishlistItems: { orderBy: { createdAt: "asc" } } }
@@ -454,6 +511,30 @@ export class BotService implements OnModuleInit {
     });
 
     this.bot.on("chosen_inline_result", async (ctx) => {
+      if (ctx.chosenInlineResult.result_id === INLINE_ADD_GIFT_RESULT_ID) {
+        const query = ctx.chosenInlineResult.query ?? "";
+        try {
+          const user = await this.upsertTelegramUser(ctx.chosenInlineResult.from);
+          const createdGift = await addTelegramNftGiftFromMessage({
+            text: query,
+            fetchHtml: (url) => this.fetchTelegramNftHtml(url),
+            createWishlistItem: (input) => this.wishlist.create(user.id, input)
+          });
+
+          if (createdGift && ctx.chosenInlineResult.inline_message_id) {
+            await ctx.editMessageText(this.formatAddedGiftMessage(createdGift), {
+              reply_markup: { inline_keyboard: [[{ text: "Открыть wishlist", url: this.botWishlistUrl(user.id) }]] }
+            });
+          }
+        } catch (error) {
+          this.logger.warn("Telegram NFT inline wishlist import failed", error instanceof Error ? error.stack : String(error));
+          if (ctx.chosenInlineResult.inline_message_id) {
+            await ctx.editMessageText(error instanceof Error ? error.message : "Не удалось добавить гифт в wishlist.");
+          }
+        }
+        return;
+      }
+
       await editChosenInlineWishlistResult({
         chosenInlineResult: ctx.chosenInlineResult,
         findUserByTelegramId: (telegramId) =>
@@ -478,6 +559,20 @@ export class BotService implements OnModuleInit {
           await ctx.reply(formatHelpMessage(), {
             link_preview_options: { is_disabled: true }
           });
+          return;
+        }
+
+        const itemNumberToRemove = parseWishlistItemRemovalCommand(text);
+        if (itemNumberToRemove) {
+          const wishlist = await this.wishlist.getMine(user.id);
+          const item = wishlist.items[itemNumberToRemove - 1];
+          if (!item) {
+            await ctx.reply(`Подарок с номером ${itemNumberToRemove} не найден. Напиши /wishlist, чтобы увидеть текущий список.`);
+            return;
+          }
+
+          await this.wishlist.remove(user.id, item.id);
+          await ctx.reply(`Удалено из wishlist: ${item.collectionName} - ${item.modelName}`);
           return;
         }
 
