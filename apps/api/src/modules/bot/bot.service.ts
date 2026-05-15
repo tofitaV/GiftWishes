@@ -54,12 +54,25 @@ type InlineAddGiftResult = {
   id: string;
   title: string;
   description: string;
+  thumbnail_url: string;
   input_message_content: {
     message_text: string;
     link_preview_options: { is_disabled: true };
   };
   reply_markup: {
     inline_keyboard: [[{ text: string; url: string }]];
+  };
+};
+
+type InlineHelpResult = {
+  type: "article";
+  id: string;
+  title: string;
+  description: string;
+  thumbnail_url: string;
+  input_message_content: {
+    message_text: string;
+    link_preview_options: { is_disabled: true };
   };
 };
 
@@ -82,6 +95,9 @@ const WISHLIST_PROFILE_START_PREFIX = "profile-";
 const DEFAULT_BOT_USERNAME = "giftwishes_bot";
 const INLINE_WISHLIST_RESULT_ID = "wishlist";
 const INLINE_ADD_GIFT_RESULT_ID = "add_nft";
+const INLINE_HELP_RESULT_ID = "help";
+const INLINE_ADD_THUMBNAIL_URL = "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/2795.png";
+const INLINE_HELP_THUMBNAIL_URL = "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/2753.png";
 
 export function formatInlineWishlistMessage({ username, items }: { username: string | null; items: InlineWishlistItem[] }) {
   return formatInlineWishlistReply({ username, items }).text;
@@ -305,12 +321,27 @@ export function createInlineAddGiftResult({ wishlistLink, sourceUrl }: { wishlis
     id: INLINE_ADD_GIFT_RESULT_ID,
     title: "Добавить подарок в wishlist",
     description: sourceUrl,
+    thumbnail_url: INLINE_ADD_THUMBNAIL_URL,
     input_message_content: {
       message_text: "Добавляю подарок в wishlist...",
       link_preview_options: { is_disabled: true }
     },
     reply_markup: {
       inline_keyboard: [[{ text: "Открыть wishlist", url: wishlistLink }]]
+    }
+  };
+}
+
+export function createInlineHelpResult(): InlineHelpResult {
+  return {
+    type: "article",
+    id: INLINE_HELP_RESULT_ID,
+    title: "Помощь",
+    description: "Как пользоваться Gift Wishes",
+    thumbnail_url: INLINE_HELP_THUMBNAIL_URL,
+    input_message_content: {
+      message_text: formatHelpMessage(),
+      link_preview_options: { is_disabled: true }
     }
   };
 }
@@ -480,17 +511,19 @@ export class BotService implements OnModuleInit {
             createInlineAddGiftResult({
               wishlistLink: this.botWishlistUrl(user.id),
               sourceUrl
-            })
+            }),
+            createInlineHelpResult()
           ],
           { cache_time: 0, is_personal: true }
         );
       }
 
+      const registeredUser = await this.upsertTelegramUser(from);
       const user = await this.prisma.user.findUnique({
-        where: { telegramId: String(from.id) },
+        where: { id: registeredUser.id },
         include: { wishlistItems: { orderBy: { createdAt: "asc" } } }
       });
-      if (!user) return ctx.answerInlineQuery([], { cache_time: 0 });
+      if (!user) return ctx.answerInlineQuery([createInlineHelpResult()], { cache_time: 0, is_personal: true });
 
       const wishlistLink = this.botWishlistUrl(user.id);
       const message = formatInlineWishlistReply({
@@ -504,9 +537,10 @@ export class BotService implements OnModuleInit {
             wishlistLink,
             message,
             itemCount: user.wishlistItems.length
-          })
+          }),
+          createInlineHelpResult()
         ],
-        { cache_time: 0 }
+        { cache_time: 0, is_personal: true }
       );
     });
 

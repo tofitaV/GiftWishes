@@ -2,6 +2,7 @@
 import {
   createBotWishlistDeepLink,
   createInlineAddGiftResult,
+  createInlineHelpResult,
   createInlineWishlistResult,
   createWishlistGiftLinksReplyMarkup,
   createWishlistProfileReplyMarkup,
@@ -347,6 +348,20 @@ describe("help command", () => {
     expect(message).toContain("/wishlist");
     expect(message).toContain("Показать свой wishlist");
   });
+
+  it("creates an inline help result with a question thumbnail", () => {
+    expect(createInlineHelpResult()).toEqual({
+      type: "article",
+      id: "help",
+      title: "Помощь",
+      description: "Как пользоваться Gift Wishes",
+      thumbnail_url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/2753.png",
+      input_message_content: {
+        message_text: formatHelpMessage(),
+        link_preview_options: { is_disabled: true }
+      }
+    });
+  });
 });
 
 describe("inline gift add", () => {
@@ -361,6 +376,7 @@ describe("inline gift add", () => {
       id: "add_nft",
       title: "Добавить подарок в wishlist",
       description: "https://t.me/nft/LunarSnake-141449",
+      thumbnail_url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/2795.png",
       input_message_content: {
         message_text: "Добавляю подарок в wishlist...",
         link_preview_options: { is_disabled: true }
