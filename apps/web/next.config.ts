@@ -8,14 +8,6 @@ const nextConfig: NextConfig = {
   skipTrailingSlashRedirect: true,
   basePath,
   assetPrefix: basePath,
-  async rewrites() {
-    return [
-      {
-        source: "/api/:path*",
-        destination: "http://127.0.0.1:4000/api/:path*"
-      }
-    ];
-  },
   images: {
     unoptimized: true
   },
