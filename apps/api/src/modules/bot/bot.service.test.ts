@@ -7,8 +7,10 @@ import {
   editChosenInlineWishlistResult,
   formatInlineWishlistMessage,
   formatInlineWishlistReply,
+  formatHelpMessage,
   formatOwnWishlistMessage,
   formatOwnWishlistReply,
+  isHelpCommand,
   isOwnWishlistCommand,
   parseWishlistStartPayload
 } from "./bot.service.js";
@@ -322,5 +324,25 @@ describe("isOwnWishlistCommand", () => {
   it("rejects unrelated messages", () => {
     expect(isOwnWishlistCommand("https://t.me/nft/VictoryMedal-33886")).toBe(false);
     expect(isOwnWishlistCommand("/start")).toBe(false);
+  });
+});
+
+describe("help command", () => {
+  it("accepts Russian and slash help commands", () => {
+    expect(isHelpCommand("Помощь")).toBe(true);
+    expect(isHelpCommand("помощь")).toBe(true);
+    expect(isHelpCommand("/help")).toBe(true);
+    expect(isHelpCommand("/help@giftwishes_bot")).toBe(true);
+  });
+
+  it("explains what the bot is and how to use wishlist features", () => {
+    const message = formatHelpMessage();
+
+    expect(message).toContain("Gift Wishes");
+    expect(message).toContain("Как пользоваться");
+    expect(message).toContain("Как добавить подарок");
+    expect(message).toContain("Как показать подарки в чате");
+    expect(message).toContain("/wishlist");
+    expect(message).toContain("Показать свой wishlist");
   });
 });

@@ -210,6 +210,27 @@ export function isOwnWishlistCommand(text: string) {
   );
 }
 
+export function isHelpCommand(text: string) {
+  const normalized = text.trim().toLowerCase();
+  return /^\/help(?:@\w+)?$/.test(normalized) || normalized === "help" || normalized === "помощь";
+}
+
+export function formatHelpMessage() {
+  return [
+    "Gift Wishes — бот для хранения желаемых подарков.",
+    "",
+    "Как пользоваться:",
+    "1. Открой Mini App из бота и собери свой список желаний.",
+    "2. Другие пользователи смогут открыть твой профиль и подарить подарок(пока не реализовано).",
+    "",
+    "Как добавить подарок:",
+    "Отправь боту ссылку на Telegram NFT, например t.me/nft/PlushPepe-123, или добавь подарок в Mini App.",
+    "",
+    "Как показать подарки в чате:",
+    "Напиши /wishlist, список или показать список. Также можно вызвать бота через @giftwishes_bot и выбрать результат \"Показать свой wishlist\"."
+  ].join("\n");
+}
+
 export function createWishlistProfileReplyMarkup({ ownerUsername, webAppUrl }: { ownerUsername: string | null; webAppUrl: string }): WishlistProfileReplyMarkup {
   const label = ownerUsername ? `Открыть профиль @${ownerUsername} / Купить гифт` : "Открыть профиль / Купить гифт";
 
@@ -453,6 +474,13 @@ export class BotService implements OnModuleInit {
       const text = message.text ?? "";
       try {
         const user = await this.upsertTelegramUser(from);
+        if (isHelpCommand(text)) {
+          await ctx.reply(formatHelpMessage(), {
+            link_preview_options: { is_disabled: true }
+          });
+          return;
+        }
+
         if (isOwnWishlistCommand(text)) {
           const wishlist = await this.wishlist.getMine(user.id);
           const reply = formatOwnWishlistReply({ items: wishlist.items });
