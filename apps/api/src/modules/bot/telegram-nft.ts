@@ -46,9 +46,20 @@ export async function addTelegramNftGiftFromMessage<T>({ text, fetchHtml, create
 
 function metaContent(html: string, property: string) {
   const escapedProperty = property.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const regex = new RegExp(`<meta\\s+[^>]*(?:property|name)=["']${escapedProperty}["'][^>]*content=["']([\\s\\S]*?)["'][^>]*>`, "i");
-  const match = html.match(regex);
-  return match?.[1] ? decodeHtml(match[1]).trim() : null;
+  const metaRegex = /<meta\s+[^>]*>/gi;
+  const propertyRegex = new RegExp(`(?:property|name)=["']${escapedProperty}["']`, "i");
+  const contentRegex = /content=["']([\s\S]*?)["']/i;
+
+  for (const [tag] of html.matchAll(metaRegex)) {
+    if (!propertyRegex.test(tag)) continue;
+
+    const content = tag.match(contentRegex)?.[1];
+    if (content) {
+      return decodeHtml(content).trim();
+    }
+  }
+
+  return null;
 }
 
 function parseDescriptionFields(description: string) {

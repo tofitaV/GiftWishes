@@ -67,6 +67,23 @@ Quantity | 98 580/124 608 issued">`,
       symbolName: "Pearl"
     });
   });
+
+  it("parses Telegram NFT metadata when meta content appears before the property", () => {
+    expect(
+      parseTelegramNftGift(
+        `<meta content="Collectible #2808
+Model | Bronze 3%
+Backdrop | Raspberry 1.2%
+Symbol | Pearl 0.7%" property="og:description">`,
+        "https://t.me/nft/VictoryMedal-2808"
+      )
+    ).toEqual({
+      collectionName: "Victory Medal",
+      modelName: "Bronze",
+      backdropName: "Raspberry",
+      symbolName: "Pearl"
+    });
+  });
 });
 
 describe("addTelegramNftGiftFromMessage", () => {
