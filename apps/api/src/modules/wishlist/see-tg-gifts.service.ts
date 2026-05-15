@@ -50,7 +50,7 @@ export class SeeTgGiftsService {
     const baseUrl = this.config.get<string>("SEE_TG_BASE_URL") ?? "https://poso.see.tg";
     const url = new URL("/api/gifts", baseUrl.replace(/\/$/, ""));
     url.searchParams.set("app_token", token);
-    url.searchParams.set("tgauth", input.telegramAuthData ?? "");
+    url.searchParams.set("tgauth", toSeeTgAuth(input.telegramAuthData ?? ""));
     url.searchParams.set("title", input.collectionName);
     url.searchParams.set("model_name", input.modelName);
     if (includeBackdrop && input.backdropName) url.searchParams.set("backdrop_name", input.backdropName);
@@ -86,6 +86,33 @@ function firstGift(data: unknown) {
   }
 
   return record;
+}
+
+function toSeeTgAuth(telegramAuthData: string) {
+  const trimmed = telegramAuthData.trim();
+  if (!trimmed) return "";
+  if (trimmed.startsWith("{")) return trimmed;
+
+  const params = new URLSearchParams(trimmed);
+  const user = parseUser(params.get("user"));
+  return JSON.stringify({
+    ...user,
+    auth_date: params.get("auth_date") ?? undefined,
+    hash: params.get("hash") ?? undefined,
+    query_id: params.get("query_id") ?? undefined,
+    tma: true,
+    tg_initdata: telegramAuthData
+  });
+}
+
+function parseUser(value: string | null) {
+  if (!value) return {};
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : {};
+  } catch {
+    return {};
+  }
 }
 
 function giftToResolvedGift(gift: Record<string, unknown> | undefined) {
