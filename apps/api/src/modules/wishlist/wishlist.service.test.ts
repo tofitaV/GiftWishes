@@ -254,6 +254,32 @@ describe("WishlistService.create", () => {
     });
   });
 
+  it("accepts Telegram's Electric Indigo result for the Electro Indigo spelling", async () => {
+    const { prisma, telegramNftLookup, service } = wishlistService({
+      seeTgGifts: { findFirstGift: vi.fn(async () => null) },
+      giftSatellite: { searchMarket: vi.fn(async () => []) },
+      telegramNftLookup: { findFirstGift: vi.fn(async () => ({ sourceUrl: "https://t.me/nft/DiamondRing-6921", backdropName: "Electric Indigo" })) }
+    });
+
+    await service.create("user-id", {
+      collectionName: "Diamond Ring",
+      modelName: "Twilight",
+      backdropName: "Electro Indigo",
+      telegramAuthData: "query_id=abc&hash=def"
+    });
+
+    expect(prisma.wishlistItem.create).toHaveBeenCalledWith({
+      data: {
+        ownerUserId: "user-id",
+        collectionName: "Diamond Ring",
+        modelName: "Twilight",
+        backdropName: "Electro Indigo",
+        symbolName: null,
+        sourceUrl: "https://t.me/nft/DiamondRing-6921"
+      }
+    });
+  });
+
   it("does not call see.tg when the user has no free wishlist slot", async () => {
     const prisma = prismaStub();
     prisma.wishlistItem.count.mockResolvedValueOnce(1);

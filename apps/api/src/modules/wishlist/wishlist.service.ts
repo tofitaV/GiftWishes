@@ -122,7 +122,15 @@ export class WishlistService {
   }
 
   private normalizeName(value?: string | null) {
-    return value?.trim().toLowerCase() || "";
+    return (
+      value
+        ?.normalize("NFKC")
+        .replace(/[’‘]/g, "'")
+        .replace(/\belectro\b/gi, "electric")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toLowerCase() || ""
+    );
   }
 
   async remove(userId: string, id: string) {
