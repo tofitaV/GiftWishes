@@ -105,6 +105,9 @@ type InlineGiftLinkResult = {
   input_message_content: {
     message_text: string;
   };
+  reply_markup: {
+    inline_keyboard: [[{ text: string; url: string }]];
+  };
 };
 
 type WishlistProfileReplyMarkup = {
@@ -419,7 +422,7 @@ export function createInlineDeleteGiftResult({ itemNumber, sourceUrl, wishlistLi
   };
 }
 
-export function createInlineGiftLinkResult({ itemNumber, sourceUrl }: { itemNumber: number; sourceUrl: string }): InlineGiftLinkResult {
+export function createInlineGiftLinkResult({ itemNumber, sourceUrl, wishlistLink }: { itemNumber: number; sourceUrl: string; wishlistLink: string }): InlineGiftLinkResult {
   return {
     type: "article",
     id: `${INLINE_GIFT_LINK_RESULT_ID_PREFIX}_${itemNumber}`,
@@ -428,6 +431,9 @@ export function createInlineGiftLinkResult({ itemNumber, sourceUrl }: { itemNumb
     thumbnail_url: INLINE_GIFT_LINK_THUMBNAIL_URL,
     input_message_content: {
       message_text: sourceUrl
+    },
+    reply_markup: {
+      inline_keyboard: [[{ text: "Открыть wishlist", url: wishlistLink }]]
     }
   };
 }
@@ -605,8 +611,10 @@ export class BotService implements OnModuleInit {
           where: { telegramId: String(from.id) },
           include: { wishlistItems: { orderBy: { createdAt: "asc" } } }
         });
+        if (!user) return ctx.answerInlineQuery([], { cache_time: 0, is_personal: true });
+
         const item = user?.wishlistItems[itemNumberToSend - 1];
-        const results = item?.sourceUrl ? [createInlineGiftLinkResult({ itemNumber: itemNumberToSend, sourceUrl: item.sourceUrl })] : [];
+        const results = item?.sourceUrl ? [createInlineGiftLinkResult({ itemNumber: itemNumberToSend, sourceUrl: item.sourceUrl, wishlistLink: this.botWishlistUrl(user.id) })] : [];
         return ctx.answerInlineQuery(results, { cache_time: 0, is_personal: true });
       }
 

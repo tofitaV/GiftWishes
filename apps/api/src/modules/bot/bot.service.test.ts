@@ -436,7 +436,8 @@ describe("inline gift link", () => {
     expect(
       createInlineGiftLinkResult({
         itemNumber: 1,
-        sourceUrl: "https://t.me/nft/LunarSnake-141449"
+        sourceUrl: "https://t.me/nft/LunarSnake-141449",
+        wishlistLink: "https://t.me/giftwishes_bot?startapp=profile-user-id"
       })
     ).toEqual({
       type: "article",
@@ -446,6 +447,9 @@ describe("inline gift link", () => {
       thumbnail_url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f517.png",
       input_message_content: {
         message_text: "https://t.me/nft/LunarSnake-141449"
+      },
+      reply_markup: {
+        inline_keyboard: [[{ text: "Открыть wishlist", url: "https://t.me/giftwishes_bot?startapp=profile-user-id" }]]
       }
     });
   });
