@@ -66,7 +66,7 @@ export class WishlistService {
         ownerUserId: userId,
         collectionName: input.collectionName,
         modelName: input.modelName,
-        backdropName: resolvedGift?.backdropName || input.backdropName || null,
+        backdropName: input.backdropName || resolvedGift?.backdropName || null,
         symbolName: input.symbolName || null,
         sourceUrl: input.sourceUrl || resolvedGift?.sourceUrl || null
       }

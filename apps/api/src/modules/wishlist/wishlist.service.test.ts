@@ -39,7 +39,7 @@ function wishlistService({
 }
 
 describe("WishlistService.create", () => {
-  it("resolves and stores a source link for a manually added gift", async () => {
+  it("resolves a source link but keeps the manually selected backdrop", async () => {
     const { prisma, seeTgGifts, service } = wishlistService({
       seeTgGifts: { findFirstGift: vi.fn(async () => ({ sourceUrl: "https://t.me/nft/PlushPepe-123", backdropName: "Sapphire" })) }
     });
@@ -62,7 +62,7 @@ describe("WishlistService.create", () => {
         ownerUserId: "user-id",
         collectionName: "Plush Pepe",
         modelName: "Raphael",
-        backdropName: "Sapphire",
+        backdropName: "Black",
         symbolName: null,
         sourceUrl: "https://t.me/nft/PlushPepe-123"
       }
@@ -154,7 +154,7 @@ describe("WishlistService.create", () => {
     });
   });
 
-  it("falls back to any Gift Satellite backdrop when the requested backdrop has no listing", async () => {
+  it("keeps the manually selected backdrop when falling back to any Gift Satellite listing", async () => {
     const { prisma, giftSatellite, service } = wishlistService({
       seeTgGifts: { findFirstGift: vi.fn(async () => null) },
       giftSatellite: {
@@ -193,14 +193,14 @@ describe("WishlistService.create", () => {
         ownerUserId: "user-id",
         collectionName: "Crystal Ball",
         modelName: "Poor Kitty",
-        backdropName: "Pistachio",
+        backdropName: "Amber",
         symbolName: null,
         sourceUrl: "https://t.me/nft/CrystalBall-21716"
       }
     });
   });
 
-  it("falls back to direct Telegram NFT lookup when see.tg and Gift Satellite do not resolve a gift", async () => {
+  it("keeps the manually selected backdrop when direct Telegram NFT lookup returns a different backdrop", async () => {
     const { prisma, telegramNftLookup, service } = wishlistService({
       seeTgGifts: { findFirstGift: vi.fn(async () => null) },
       giftSatellite: { searchMarket: vi.fn(async () => []) },
@@ -220,7 +220,7 @@ describe("WishlistService.create", () => {
         ownerUserId: "user-id",
         collectionName: "Plush Pepe",
         modelName: "Raphael",
-        backdropName: "Neon Blue",
+        backdropName: "Black",
         symbolName: null,
         sourceUrl: "https://t.me/nft/PlushPepe-57"
       }
@@ -245,6 +245,29 @@ describe("WishlistService.create", () => {
 
     expect(seeTgGifts.findFirstGift).not.toHaveBeenCalled();
     expect(giftSatellite.searchMarket).not.toHaveBeenCalled();
+  });
+
+  it("uses the resolved backdrop when the user did not select one", async () => {
+    const { prisma, seeTgGifts, service } = wishlistService({
+      seeTgGifts: { findFirstGift: vi.fn(async () => ({ sourceUrl: "https://t.me/nft/PlushPepe-123", backdropName: "Sapphire" })) }
+    });
+
+    await service.create("user-id", {
+      collectionName: "Plush Pepe",
+      modelName: "Raphael",
+      telegramAuthData: "query_id=abc&hash=def"
+    });
+
+    expect(prisma.wishlistItem.create).toHaveBeenCalledWith({
+      data: {
+        ownerUserId: "user-id",
+        collectionName: "Plush Pepe",
+        modelName: "Raphael",
+        backdropName: "Sapphire",
+        symbolName: null,
+        sourceUrl: "https://t.me/nft/PlushPepe-123"
+      }
+    });
   });
 });
 
