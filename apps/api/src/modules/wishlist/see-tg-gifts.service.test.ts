@@ -45,7 +45,34 @@ describe("SeeTgGiftsService", () => {
     expect(url.searchParams.get("order")).toBe("asc");
   });
 
-  it("falls back to any backdrop when the requested backdrop has no gifts", async () => {
+  it("finds the requested backdrop in a broader model search when the exact backdrop search is empty", async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ gifts: [] }))
+      .mockResolvedValueOnce(
+        jsonResponse([
+          { slug: "PlushPepe", num: 456, backdrop: { name: "Sapphire" } },
+          { slug: "PlushPepe", num: 789, backdrop_name: "Black" }
+        ])
+      );
+    const service = new SeeTgGiftsService(config({ SEE_TG_TOKEN: "app-token" }) as never, fetcher);
+
+    await expect(
+      service.findFirstGift({
+        collectionName: "Plush Pepe",
+        modelName: "Raphael",
+        backdropName: "Black",
+        telegramAuthData: "query_id=abc&hash=def"
+      })
+    ).resolves.toEqual({ sourceUrl: "https://t.me/nft/PlushPepe-789", backdropName: "Black" });
+
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(new URL(String(fetcher.mock.calls[0]?.[0])).searchParams.get("backdrop_name")).toBe("Black");
+    expect(new URL(String(fetcher.mock.calls[1]?.[0])).searchParams.has("backdrop_name")).toBe(false);
+    expect(new URL(String(fetcher.mock.calls[1]?.[0])).searchParams.get("limit")).toBe("50");
+  });
+
+  it("returns null for a selected backdrop when broader see.tg results do not contain that backdrop", async () => {
     const fetcher = vi
       .fn()
       .mockResolvedValueOnce(jsonResponse({ gifts: [] }))
@@ -59,11 +86,31 @@ describe("SeeTgGiftsService", () => {
         backdropName: "Black",
         telegramAuthData: "query_id=abc&hash=def"
       })
-    ).resolves.toEqual({ sourceUrl: "https://t.me/nft/PlushPepe-456", backdropName: "Sapphire" });
+    ).resolves.toBeNull();
+  });
 
-    expect(fetcher).toHaveBeenCalledTimes(2);
-    expect(new URL(String(fetcher.mock.calls[0]?.[0])).searchParams.get("backdrop_name")).toBe("Black");
-    expect(new URL(String(fetcher.mock.calls[1]?.[0])).searchParams.has("backdrop_name")).toBe(false);
+  it("takes the first see.tg gift by model when no backdrop is selected", async () => {
+    const fetcher = vi.fn(async () =>
+      jsonResponse({
+        gifts: [
+          { slug: "PlushPepe", num: 123, backdrop_name: "Sapphire" },
+          { slug: "PlushPepe", num: 456, backdrop_name: "Black" }
+        ]
+      })
+    );
+    const service = new SeeTgGiftsService(config({ SEE_TG_TOKEN: "app-token" }) as never, fetcher);
+
+    await expect(
+      service.findFirstGift({
+        collectionName: "Plush Pepe",
+        modelName: "Raphael",
+        telegramAuthData: "query_id=abc&hash=def"
+      })
+    ).resolves.toEqual({ sourceUrl: "https://t.me/nft/PlushPepe-123", backdropName: "Sapphire" });
+
+    const url = new URL(String(fetcher.mock.calls[0]?.[0]));
+    expect(url.searchParams.has("backdrop_name")).toBe(false);
+    expect(url.searchParams.get("limit")).toBe("1");
   });
 
   it("converts Telegram Mini App initData to see.tg JSON tgauth", async () => {

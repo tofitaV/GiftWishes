@@ -40,21 +40,33 @@ export class SeeTgGiftsService {
       return null;
     }
 
-    const exactBackdropGift = await this.searchFirstGift(input, token, Boolean(input.backdropName));
-    if (exactBackdropGift || !input.backdropName) return exactBackdropGift;
+    const backdropName = cleanOptionalName(input.backdropName);
+    const lookup = { ...input, backdropName };
+    const exactResults = await this.searchGifts(lookup, token, {
+      includeBackdrop: Boolean(backdropName),
+      limit: 1
+    });
+    const firstExactResult = exactResults[0] ?? null;
+    if (!backdropName) return firstExactResult;
 
-    return this.searchFirstGift(input, token, false);
+    if (matchesBackdrop(firstExactResult, backdropName)) return firstExactResult;
+
+    const broaderResults = await this.searchGifts(lookup, token, {
+      includeBackdrop: false,
+      limit: 50
+    });
+    return broaderResults.find((gift) => matchesBackdrop(gift, backdropName)) ?? null;
   }
 
-  private async searchFirstGift(input: SeeTgGiftLookup, token: string, includeBackdrop: boolean) {
+  private async searchGifts(input: SeeTgGiftLookup, token: string, options: { includeBackdrop: boolean; limit: number }) {
     const baseUrl = this.config.get<string>("SEE_TG_BASE_URL") ?? "https://poso.see.tg";
     const url = new URL("/api/gifts", baseUrl.replace(/\/$/, ""));
     url.searchParams.set("app_token", token);
     url.searchParams.set("tgauth", toSeeTgAuth(input.telegramAuthData ?? ""));
     url.searchParams.set("title", input.collectionName);
     url.searchParams.set("model_name", input.modelName);
-    if (includeBackdrop && input.backdropName) url.searchParams.set("backdrop_name", input.backdropName);
-    url.searchParams.set("limit", "1");
+    if (options.includeBackdrop && input.backdropName) url.searchParams.set("backdrop_name", input.backdropName);
+    url.searchParams.set("limit", String(options.limit));
     url.searchParams.set("sort_by", "num");
     url.searchParams.set("order", "asc");
 
@@ -64,28 +76,28 @@ export class SeeTgGiftsService {
     });
     if (!response?.ok) {
       this.logger.warn(`see.tg lookup returned ${response?.status ?? "no response"} for ${input.collectionName} / ${input.modelName}`);
-      return null;
+      return [];
     }
 
-    const resolvedGift = giftToResolvedGift(firstGift(await response.json()));
-    if (!resolvedGift) {
+    const resolvedGifts = giftsFromResponse(await response.json()).map(giftToResolvedGift).filter(isResolvedGift);
+    if (resolvedGifts.length === 0) {
       this.logger.warn(`see.tg lookup returned no parsable gift for ${input.collectionName} / ${input.modelName}`);
     }
-    return resolvedGift;
+    return resolvedGifts;
   }
 }
 
-function firstGift(data: unknown) {
-  if (Array.isArray(data)) return data[0] as Record<string, unknown> | undefined;
-  if (!data || typeof data !== "object") return undefined;
+function giftsFromResponse(data: unknown) {
+  if (Array.isArray(data)) return data as Record<string, unknown>[];
+  if (!data || typeof data !== "object") return [];
 
   const record = data as Record<string, unknown>;
   for (const key of ["gifts", "items", "results", "data"]) {
     const value = record[key];
-    if (Array.isArray(value)) return value[0] as Record<string, unknown> | undefined;
+    if (Array.isArray(value)) return value as Record<string, unknown>[];
   }
 
-  return record;
+  return [record];
 }
 
 function toSeeTgAuth(telegramAuthData: string) {
@@ -129,6 +141,10 @@ function giftToResolvedGift(gift: Record<string, unknown> | undefined) {
   };
 }
 
+function isResolvedGift(gift: SeeTgResolvedGift | null): gift is SeeTgResolvedGift {
+  return Boolean(gift);
+}
+
 function giftToTelegramNftUrl(gift: Record<string, unknown>) {
   const slug = firstString(gift, ["slug", "gift_slug", "collection_slug"]);
   const num = firstString(gift, ["num", "number", "model_num"]);
@@ -154,4 +170,25 @@ function firstString(record: Record<string, unknown>, keys: string[]) {
     if (typeof value === "number" && Number.isFinite(value)) return String(value);
   }
   return null;
+}
+
+function matchesBackdrop(gift: { backdropName?: string | null } | null, backdropName: string) {
+  return normalizeName(gift?.backdropName) === normalizeName(backdropName);
+}
+
+function cleanOptionalName(value?: string | null) {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+function normalizeName(value?: string | null) {
+  return (
+    value
+      ?.normalize("NFKC")
+      .replace(/[â€™â€˜]/g, "'")
+      .replace(/\belectro\b/gi, "electric")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase() || ""
+  );
 }

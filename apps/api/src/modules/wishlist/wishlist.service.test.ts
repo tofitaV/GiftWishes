@@ -322,6 +322,36 @@ describe("WishlistService.create", () => {
       }
     });
   });
+
+  it("treats a blank selected backdrop as no selected backdrop", async () => {
+    const { prisma, seeTgGifts, service } = wishlistService({
+      seeTgGifts: { findFirstGift: vi.fn(async () => ({ sourceUrl: "https://t.me/nft/PlushPepe-123", backdropName: "Sapphire" })) }
+    });
+
+    await service.create("user-id", {
+      collectionName: "Plush Pepe",
+      modelName: "Raphael",
+      backdropName: "   ",
+      telegramAuthData: "query_id=abc&hash=def"
+    });
+
+    expect(seeTgGifts.findFirstGift).toHaveBeenCalledWith({
+      collectionName: "Plush Pepe",
+      modelName: "Raphael",
+      backdropName: undefined,
+      telegramAuthData: "query_id=abc&hash=def"
+    });
+    expect(prisma.wishlistItem.create).toHaveBeenCalledWith({
+      data: {
+        ownerUserId: "user-id",
+        collectionName: "Plush Pepe",
+        modelName: "Raphael",
+        backdropName: "Sapphire",
+        symbolName: null,
+        sourceUrl: "https://t.me/nft/PlushPepe-123"
+      }
+    });
+  });
 });
 
 describe("WishlistService reads", () => {

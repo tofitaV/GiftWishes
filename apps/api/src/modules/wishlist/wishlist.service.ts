@@ -51,6 +51,10 @@ export class WishlistService {
   }
 
   async create(userId: string, input: CreateWishlistItemInput) {
+    const normalizedInput = {
+      ...input,
+      backdropName: this.cleanOptionalName(input.backdropName)
+    };
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
     const usedSlots = await this.prisma.wishlistItem.count({ where: { ownerUserId: userId } });
     const allowedSlots = FREE_WISHLIST_SLOTS + user.purchasedWishlistSlots;
@@ -59,16 +63,16 @@ export class WishlistService {
       throw new BadRequestException("Wishlist slot limit reached. Buy an extra slot for 50 Telegram Stars.");
     }
 
-    const resolvedGift = input.sourceUrl ? null : await this.resolveGiftSource(userId, input);
+    const resolvedGift = normalizedInput.sourceUrl ? null : await this.resolveGiftSource(userId, normalizedInput);
 
     return this.prisma.wishlistItem.create({
       data: {
         ownerUserId: userId,
-        collectionName: input.collectionName,
-        modelName: input.modelName,
-        backdropName: input.backdropName || resolvedGift?.backdropName || null,
-        symbolName: input.symbolName || null,
-        sourceUrl: input.sourceUrl || resolvedGift?.sourceUrl || null
+        collectionName: normalizedInput.collectionName,
+        modelName: normalizedInput.modelName,
+        backdropName: normalizedInput.backdropName || resolvedGift?.backdropName || null,
+        symbolName: normalizedInput.symbolName || null,
+        sourceUrl: normalizedInput.sourceUrl || resolvedGift?.sourceUrl || null
       }
     });
   }
@@ -131,6 +135,11 @@ export class WishlistService {
         .trim()
         .toLowerCase() || ""
     );
+  }
+
+  private cleanOptionalName(value?: string | null) {
+    const trimmed = value?.trim();
+    return trimmed ? trimmed : undefined;
   }
 
   async remove(userId: string, id: string) {
