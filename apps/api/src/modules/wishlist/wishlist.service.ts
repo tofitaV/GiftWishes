@@ -56,7 +56,7 @@ export class WishlistService {
     const allowedSlots = FREE_WISHLIST_SLOTS + user.purchasedWishlistSlots;
 
     if (usedSlots >= allowedSlots) {
-      throw new BadRequestException("Wishlist slot limit reached. Buy an extra slot for 1 Telegram Star.");
+      throw new BadRequestException("Wishlist slot limit reached. Buy an extra slot for 50 Telegram Stars.");
     }
 
     const resolvedGift = input.sourceUrl ? null : await this.resolveGiftSource(userId, input);

@@ -16,8 +16,8 @@ describe("StarsService wishlist slot payments", () => {
     vi.restoreAllMocks();
   });
 
-  it("creates a pending 1 Star invoice without granting a slot", async () => {
-    expect(EXTRA_WISHLIST_SLOT_PRICE_STARS).toBe(1);
+  it("creates a pending 50 Stars invoice without granting a slot", async () => {
+    expect(EXTRA_WISHLIST_SLOT_PRICE_STARS).toBe(50);
 
     const createdEntries: unknown[] = [];
     const prisma = {
