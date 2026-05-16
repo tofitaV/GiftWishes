@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { authenticateWithTelegram, getTelegramInitData, getTelegramStartParam } from "./telegram-auth";
+import { authenticateWithTelegram, getTelegramInitData, getTelegramStartParam, LANGUAGE_STORAGE_KEY, storePreferredLanguage } from "./telegram-auth";
 
 describe("getTelegramInitData", () => {
   it("reads Telegram WebApp initData from the browser window", () => {
@@ -68,21 +68,81 @@ describe("authenticateWithTelegram", () => {
     expect(result).toEqual({ token: "jwt-token", user: { id: "u1" } });
   });
 
-  it("reuses the stored JWT without posting to the backend", async () => {
+  it("reuses the stored JWT without posting to the backend when initData is unavailable", async () => {
     const fetcher = vi.fn();
+    const storage = new Map<string, string>([["gift-wishes-token", "existing-token"]]);
+
+    const result = await authenticateWithTelegram({
+      initData: null,
+      apiBase: "https://api.example.com/api",
+      fetcher,
+      storage: {
+        getItem: (key) => storage.get(key) ?? null,
+        setItem: (key, value) => storage.set(key, value)
+      }
+    });
+
+    expect(fetcher).not.toHaveBeenCalled();
+    expect(result).toEqual({ token: "existing-token" });
+  });
+
+  it("refreshes a stored JWT when initData is available so backend preferredLanguage wins", async () => {
+    const storage = new Map<string, string>([
+      ["gift-wishes-token", "existing-token"],
+      [LANGUAGE_STORAGE_KEY, "en"]
+    ]);
+    const fetcher = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ token: "fresh-token", user: { preferredLanguage: "uk" } }),
+      text: async () => ""
+    }));
 
     const result = await authenticateWithTelegram({
       initData: "query_id=1&hash=abc",
       apiBase: "https://api.example.com/api",
       fetcher,
       storage: {
-        getItem: () => "existing-token",
-        setItem: vi.fn()
+        getItem: (key) => storage.get(key) ?? null,
+        setItem: (key, value) => storage.set(key, value)
+      }
+    });
+
+    expect(fetcher).toHaveBeenCalledOnce();
+    expect(storage.get("gift-wishes-token")).toBe("fresh-token");
+    expect(storage.get(LANGUAGE_STORAGE_KEY)).toBe("uk");
+    expect(result).toEqual({ token: "fresh-token", user: { preferredLanguage: "uk" } });
+  });
+
+  it("keeps the selected language when reusing a stored JWT without initData", async () => {
+    const fetcher = vi.fn();
+    const storage = new Map<string, string>([
+      ["gift-wishes-token", "existing-token"],
+      [LANGUAGE_STORAGE_KEY, "uk"]
+    ]);
+
+    const result = await authenticateWithTelegram({
+      initData: null,
+      apiBase: "https://api.example.com/api",
+      fetcher,
+      storage: {
+        getItem: (key) => storage.get(key) ?? null,
+        setItem: (key, value) => storage.set(key, value)
       }
     });
 
     expect(fetcher).not.toHaveBeenCalled();
-    expect(result).toEqual({ token: "existing-token" });
+    expect(result).toEqual({ token: "existing-token", user: { preferredLanguage: "uk" } });
+  });
+
+  it("stores a normalized preferred language for the next app open", () => {
+    const storage = new Map<string, string>();
+
+    storePreferredLanguage("de", {
+      getItem: (key) => storage.get(key) ?? null,
+      setItem: (key, value) => storage.set(key, value)
+    });
+
+    expect(storage.get(LANGUAGE_STORAGE_KEY)).toBe("en");
   });
 
   it("can force refresh a stored JWT after the API rejects it", async () => {

@@ -6,7 +6,7 @@ import { GiftCard } from "./gift-card";
 import { LanguageSelector } from "./language-selector";
 import { api } from "../lib/api";
 import { DEFAULT_LANGUAGE, normalizeLanguage, t, type SupportedLanguage } from "../lib/i18n";
-import { authenticateWithTelegram, getTelegramInitData, prepareTelegramWebApp } from "../lib/telegram-auth";
+import { authenticateWithTelegram, getTelegramInitData, prepareTelegramWebApp, storePreferredLanguage } from "../lib/telegram-auth";
 
 export function PublicWishlistClient({ userId }: { userId: string }) {
   const [wishlist, setWishlist] = useState<PublicWishlistDto | null>(null);
@@ -30,6 +30,7 @@ export function PublicWishlistClient({ userId }: { userId: string }) {
 
   async function changeLanguage(nextLanguage: SupportedLanguage) {
     setLanguage(nextLanguage);
+    storePreferredLanguage(nextLanguage);
     if (authReady) {
       await api("/auth/me/language", {
         method: "PATCH",

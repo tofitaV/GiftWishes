@@ -12,7 +12,7 @@ import { PublicWishlistClient } from "../components/public-wishlist-client";
 import { parsePublicWishlistStartParam } from "../lib/routing";
 import { SLOT_PURCHASE_DISABLED } from "../lib/slot-purchase";
 import { DEFAULT_LANGUAGE, normalizeLanguage, t, type SupportedLanguage } from "../lib/i18n";
-import { authenticateWithTelegram, getTelegramInitData, getTelegramStartParam, openTelegramInvoice, prepareTelegramWebApp } from "../lib/telegram-auth";
+import { authenticateWithTelegram, getTelegramInitData, getTelegramStartParam, openTelegramInvoice, prepareTelegramWebApp, storePreferredLanguage } from "../lib/telegram-auth";
 
 type MineResponse = {
   limit: number;
@@ -119,6 +119,7 @@ export default function HomePage() {
 
   async function changeLanguage(nextLanguage: SupportedLanguage) {
     setLanguage(nextLanguage);
+    storePreferredLanguage(nextLanguage);
     if (authReady) {
       await api("/auth/me/language", {
         method: "PATCH",

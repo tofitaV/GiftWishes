@@ -24,6 +24,8 @@ type TelegramWindow = Partial<Window> & {
 type TokenStorage = Pick<Storage, "getItem" | "setItem">;
 type AuthFetcher = (input: string, init: RequestInit) => Promise<Pick<Response, "json" | "ok" | "text">>;
 
+export const LANGUAGE_STORAGE_KEY = "gift-wishes-language";
+
 type AuthOptions = {
   initData: string | null;
   apiBase?: string;
@@ -60,6 +62,15 @@ export function openTelegramInvoice(invoiceLink: string, callback: (status: "pai
   return true;
 }
 
+export function storePreferredLanguage(language: string | null | undefined, storage: TokenStorage = window.localStorage) {
+  storage.setItem(LANGUAGE_STORAGE_KEY, normalizeLanguage(language));
+}
+
+function storedPreferredLanguage(storage: TokenStorage) {
+  const language = storage.getItem(LANGUAGE_STORAGE_KEY);
+  return language ? normalizeLanguage(language) : undefined;
+}
+
 export async function authenticateWithTelegram({
   initData,
   apiBase = API_BASE,
@@ -68,8 +79,9 @@ export async function authenticateWithTelegram({
   storage = window.localStorage
 }: AuthOptions) {
   const existingToken = storage.getItem(AUTH_TOKEN_STORAGE_KEY);
-  if (existingToken && !forceRefresh) {
-    return { token: existingToken };
+  if (existingToken && !forceRefresh && !initData) {
+    const preferredLanguage = storedPreferredLanguage(storage);
+    return preferredLanguage ? { token: existingToken, user: { preferredLanguage } } : { token: existingToken };
   }
 
   if (!initData) {
@@ -94,6 +106,7 @@ export async function authenticateWithTelegram({
   storage.setItem(AUTH_TOKEN_STORAGE_KEY, result.token);
   if (result.user?.preferredLanguage) {
     result.user.preferredLanguage = normalizeLanguage(result.user.preferredLanguage) satisfies SupportedLanguage;
+    storePreferredLanguage(result.user.preferredLanguage, storage);
   }
   return result;
 }

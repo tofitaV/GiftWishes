@@ -46,7 +46,7 @@ export class AuthService {
         firstName: userPayload.first_name ?? null,
         lastName: userPayload.last_name ?? null,
         languageCode: userPayload.language_code ?? null,
-        preferredLanguage: "en",
+        preferredLanguage: normalizeLanguage(userPayload.language_code),
         isUsernameVisible: true
       }
     });
