@@ -48,7 +48,7 @@ describe("formatInlineWishlistMessage", () => {
   });
 
   it("returns an empty wishlist message when there are no gifts", () => {
-    expect(formatInlineWishlistMessage({ username: "alice", items: [] })).toBe("Wishlist @alice пока пуст");
+    expect(formatInlineWishlistMessage({ username: "alice", items: [] })).toBe("Wishlist @alice is empty");
   });
 
   it("links gift names in inline wishlist messages when gifts have source links", () => {
@@ -115,7 +115,7 @@ describe("formatInlineWishlistMessage", () => {
     });
 
     expect(result.reply_markup.inline_keyboard[0]?.[0]).toEqual({
-      text: "Открыть wishlist",
+      text: "Open wishlist",
       url: "https://t.me/giftwishes_bot?startapp=profile-user-id"
     });
     expect(result.thumbnail_url).toBe("https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f381.png");
@@ -150,8 +150,8 @@ describe("formatInlineWishlistMessage", () => {
     expect(result).toEqual({
       type: "article",
       id: "wishlist_user_holdkaspa",
-      title: "Показать wishlist @holdkaspa",
-      description: "1 подарков в списке",
+      title: "Show @holdkaspa's wishlist",
+      description: "1 gift in wishlist",
       thumbnail_url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f381.png",
       input_message_content: {
         message_text: "Wishlist @holdkaspa\n\n1. Diamond Ring - Twilight Electric Indigo",
@@ -160,7 +160,7 @@ describe("formatInlineWishlistMessage", () => {
         disable_web_page_preview: true
       },
       reply_markup: {
-        inline_keyboard: [[{ text: "Открыть wishlist @holdkaspa", url: "https://t.me/giftwishes_bot?startapp=profile-user-id" }]]
+        inline_keyboard: [[{ text: "Open @holdkaspa's wishlist", url: "https://t.me/giftwishes_bot?startapp=profile-user-id" }]]
       }
     });
   });
@@ -224,7 +224,7 @@ describe("formatInlineWishlistMessage", () => {
           link_preview_options: { is_disabled: true },
           disable_web_page_preview: true,
           reply_markup: {
-            inline_keyboard: [[{ text: "Открыть wishlist", url: "https://t.me/giftwishes_bot?startapp=profile-user-id" }]]
+            inline_keyboard: [[{ text: "Open wishlist", url: "https://t.me/giftwishes_bot?startapp=profile-user-id" }]]
           }
         }
       ]
@@ -291,7 +291,7 @@ describe("formatInlineWishlistMessage", () => {
           link_preview_options: { is_disabled: true },
           disable_web_page_preview: true,
           reply_markup: {
-            inline_keyboard: [[{ text: "Открыть wishlist @alice", url: "https://t.me/giftwishes_bot?startapp=profile-user-id" }]]
+            inline_keyboard: [[{ text: "Open @alice's wishlist", url: "https://t.me/giftwishes_bot?startapp=profile-user-id" }]]
           }
         }
       ]
@@ -323,7 +323,7 @@ describe("formatInlineWishlistMessage", () => {
       inline_keyboard: [
         [
           {
-            text: "Открыть профиль @alice / Купить гифт",
+            text: "Open @alice's profile / Buy gift",
             web_app: { url: "https://tofitav.github.io/GiftWishes/?owner=user-id" }
           }
         ]
@@ -346,11 +346,11 @@ describe("formatOwnWishlistMessage", () => {
           }
         ]
       })
-    ).toBe("Твой wishlist\n\n1. 🏅 Victory Medal - Bronze 🎁 Steel Grey");
+    ).toBe("Your wishlist\n\n1. 🏅 Victory Medal - Bronze 🎁 Steel Grey");
   });
 
   it("returns an empty message when the sender has no gifts", () => {
-    expect(formatOwnWishlistMessage({ items: [] })).toBe("Твой wishlist пока пуст");
+    expect(formatOwnWishlistMessage({ items: [] })).toBe("Your wishlist is empty");
   });
   it("adds the model custom emoji before gift names when it is known", () => {
     expect(
@@ -365,7 +365,7 @@ describe("formatOwnWishlistMessage", () => {
           }
         ]
       })
-    ).toBe("\u0422\u0432\u043E\u0439 wishlist\n\n1. \uD83C\uDF81 Plush Pepe - Raphael \uD83C\uDF81 Black");
+    ).toBe("Your wishlist\n\n1. \uD83C\uDF81 Plush Pepe - Raphael \uD83C\uDF81 Black");
   });
 
   it("uses explicit custom emoji entities instead of HTML tags for the sender's wishlist", () => {
@@ -382,7 +382,7 @@ describe("formatOwnWishlistMessage", () => {
         ]
       })
     ).toEqual({
-      text: "Твой wishlist\n\n1. 🎁 Plush Pepe - Raphael 🎁 Black",
+      text: "Your wishlist\n\n1. 🎁 Plush Pepe - Raphael 🎁 Black",
       entities: [
         {
           type: "custom_emoji",
@@ -425,7 +425,7 @@ describe("createWishlistGiftLinksReplyMarkup", () => {
         ]
       })
     ).toEqual({
-      inline_keyboard: [[{ text: "Открыть 1. Victory Medal - Bronze", url: "https://t.me/nft/VictoryMedal-33886" }]]
+      inline_keyboard: [[{ text: "Open 1. Victory Medal - Bronze", url: "https://t.me/nft/VictoryMedal-33886" }]]
     });
   });
 });
@@ -452,24 +452,44 @@ describe("help command", () => {
     expect(isHelpCommand("/help@giftwishes_bot")).toBe(true);
   });
 
+  it("formats help in English by default", () => {
+    const message = formatHelpMessage("en");
+
+    expect(message).toContain("How to use");
+    expect(message).toContain("/wishlist");
+    expect(message).toContain("How to delete a gift");
+  });
+
+  it("formats inline actions in Ukrainian when requested", () => {
+    const result = createInlineWishlistResult({
+      wishlistLink: "https://t.me/giftwishes_bot?startapp=profile-user-id",
+      message: { text: "Wishlist @alice", entities: [] },
+      itemCount: 1,
+      language: "uk"
+    });
+
+    expect(result.title).toBe("Показати мій wishlist");
+    expect(result.reply_markup.inline_keyboard[0]?.[0]?.text).toBe("Відкрити wishlist");
+  });
+
   it("explains what the bot is and how to use wishlist features", () => {
     const message = formatHelpMessage();
 
     expect(message).toContain("Gift Wishes");
-    expect(message).toContain("Как пользоваться");
-    expect(message).toContain("Как добавить подарок");
-    expect(message).toContain("Как показать подарки в чате");
+    expect(message).toContain("How to use");
+    expect(message).toContain("How to add a gift");
+    expect(message).toContain("How to show gifts in chat");
     expect(message).toContain("/wishlist");
-    expect(message).toContain("Показать свой wishlist");
-    expect(message).toContain("Удалить подарок из wishlist");
+    expect(message).toContain("Show my wishlist");
+    expect(message).toContain("Delete gift #1");
   });
 
   it("creates an inline help result with a question thumbnail", () => {
     expect(createInlineHelpResult()).toEqual({
       type: "article",
       id: "help",
-      title: "Помощь",
-      description: "Как пользоваться Gift Wishes",
+      title: "Help",
+      description: "How to use Gift Wishes",
       thumbnail_url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/2753.png",
       input_message_content: {
         message_text: formatHelpMessage(),
@@ -490,16 +510,16 @@ describe("inline gift add", () => {
     ).toEqual({
       type: "article",
       id: "add_nft",
-      title: "Добавить подарок в wishlist",
+      title: "Add gift to wishlist",
       description: "https://t.me/nft/LunarSnake-141449",
       thumbnail_url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/2795.png",
       input_message_content: {
-        message_text: "Добавляю подарок в wishlist...",
+        message_text: "Adding gift to wishlist...",
         link_preview_options: { is_disabled: true },
         disable_web_page_preview: true
       },
       reply_markup: {
-        inline_keyboard: [[{ text: "Открыть wishlist", url: "https://t.me/giftwishes_bot?startapp=profile-user-id" }]]
+        inline_keyboard: [[{ text: "Open wishlist", url: "https://t.me/giftwishes_bot?startapp=profile-user-id" }]]
       }
     });
   });
@@ -515,16 +535,35 @@ describe("inline gift delete", () => {
     ).toEqual({
       type: "article",
       id: "delete_gift",
-      title: "Удалить подарок из wishlist",
+      title: "Delete gift from wishlist",
       description: "https://t.me/nft/LunarSnake-141449",
       thumbnail_url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/2796.png",
       input_message_content: {
-        message_text: "Удаляю подарок из wishlist...",
+        message_text: "Removing gift from your wishlist...",
         link_preview_options: { is_disabled: true },
         disable_web_page_preview: true
       },
       reply_markup: {
-        inline_keyboard: [[{ text: "Открыть wishlist", url: "https://t.me/giftwishes_bot?startapp=profile-user-id" }]]
+        inline_keyboard: [[{ text: "Open wishlist", url: "https://t.me/giftwishes_bot?startapp=profile-user-id" }]]
+      }
+    });
+  });
+
+  it("creates an inline result for deleting a wishlist gift by number with its own result id", () => {
+    expect(
+      createInlineDeleteGiftResult({
+        itemNumber: 2,
+        wishlistLink: "https://t.me/giftwishes_bot?startapp=profile-user-id",
+        language: "en"
+      })
+    ).toMatchObject({
+      type: "article",
+      id: "delete_gift_2",
+      title: "Delete gift #2",
+      description: "Remove gift #2 from your wishlist",
+      thumbnail_url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/2796.png",
+      input_message_content: {
+        message_text: "Removing gift #2 from your wishlist..."
       }
     });
   });
@@ -549,14 +588,14 @@ describe("inline gift link", () => {
     ).toEqual({
       type: "article",
       id: "gift_link_1",
-      title: "Вывести подарок #1",
+      title: "Send gift #1",
       description: "https://t.me/nft/LunarSnake-141449",
       thumbnail_url: "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f517.png",
       input_message_content: {
         message_text: "https://t.me/nft/LunarSnake-141449"
       },
       reply_markup: {
-        inline_keyboard: [[{ text: "Открыть wishlist", url: "https://t.me/giftwishes_bot?startapp=profile-user-id" }]]
+        inline_keyboard: [[{ text: "Open wishlist", url: "https://t.me/giftwishes_bot?startapp=profile-user-id" }]]
       }
     });
   });

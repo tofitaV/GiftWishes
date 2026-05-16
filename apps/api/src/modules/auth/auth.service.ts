@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { BadRequestException, Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
+import { normalizeLanguage, type SupportedLanguage } from "@gift-wishes/shared";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { TelegramAuthDataStore } from "./telegram-auth-data.store.js";
 
@@ -45,6 +46,7 @@ export class AuthService {
         firstName: userPayload.first_name ?? null,
         lastName: userPayload.last_name ?? null,
         languageCode: userPayload.language_code ?? null,
+        preferredLanguage: "en",
         isUsernameVisible: true
       }
     });
@@ -64,11 +66,20 @@ export class AuthService {
         firstName: user.firstName,
         lastName: user.lastName,
         languageCode: user.languageCode,
+        preferredLanguage: normalizeLanguage(user.preferredLanguage),
         tonBalanceNano: user.tonBalanceNano.toString(),
         purchasedWishlistSlots: user.purchasedWishlistSlots,
         connectedWalletAddress: user.connectedWalletAddress
       }
     };
+  }
+
+  async updatePreferredLanguage(userId: string, language: SupportedLanguage) {
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: { preferredLanguage: language }
+    });
+    return { preferredLanguage: normalizeLanguage(user.preferredLanguage) };
   }
 
   private parseAndValidateInitData(initData: string): { user: TelegramInitUser } {
