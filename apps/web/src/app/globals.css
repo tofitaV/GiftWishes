@@ -60,6 +60,11 @@ input:focus-visible {
   outline-offset: 2px;
 }
 
+select:focus-visible {
+  outline: 2px solid var(--primary-strong);
+  outline-offset: 2px;
+}
+
 .shell {
   min-height: 100vh;
   max-width: 760px;
@@ -74,6 +79,22 @@ input:focus-visible {
   gap: 12px;
   margin-bottom: 18px;
   padding: 8px 0 2px;
+}
+
+.language-selector {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.language-selector select {
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  color: var(--text);
+  padding: 0 8px;
 }
 
 .title {

@@ -2,6 +2,13 @@ export const FREE_WISHLIST_SLOTS = 3;
 export const EXTRA_WISHLIST_SLOT_PRICE_STARS = 50;
 export const TELEGRAM_MARKET_TRANSFER_FEE_STARS = 25;
 export const NANO_TON = 1_000_000_000n;
+export const SUPPORTED_LANGUAGES = ["en", "uk", "ru"] as const;
+export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
+export const DEFAULT_LANGUAGE: SupportedLanguage = "en";
+
+export function normalizeLanguage(value?: string | null): SupportedLanguage {
+  return SUPPORTED_LANGUAGES.includes(value as SupportedLanguage) ? (value as SupportedLanguage) : DEFAULT_LANGUAGE;
+}
 
 export const SUPPORTED_MARKETS = ["telegram", "portals", "tonnel", "mrkt", "getgems"] as const;
 export type SupportedMarket = (typeof SUPPORTED_MARKETS)[number];

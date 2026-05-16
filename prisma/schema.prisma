@@ -33,6 +33,7 @@ enum PurchaseStatus {
 
 enum StarsLedgerType {
   slot_purchase_stub
+  slot_purchase
   market_transfer_fee_stub
 }
 
@@ -43,6 +44,7 @@ model User {
   firstName              String?
   lastName               String?
   languageCode           String?
+  preferredLanguage      String              @default("en")
   isUsernameVisible      Boolean             @default(false)
   tonBalanceNano         BigInt              @default(0)
   purchasedWishlistSlots Int                 @default(0)
@@ -115,6 +117,8 @@ model StarsLedgerEntry {
   type        StarsLedgerType
   amountStars Int
   status      LedgerStatus    @default(confirmed)
+  invoicePayload String?      @unique
+  telegramPaymentChargeId String? @unique
   metadata    Json?
   createdAt   DateTime        @default(now())
   user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)

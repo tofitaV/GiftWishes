@@ -6,11 +6,13 @@ import type { WishlistItemDto } from "@gift-wishes/shared";
 import { GiftPicker, type GiftSelection } from "../components/gift-picker";
 import { api } from "../lib/api";
 import { GiftCard } from "../components/gift-card";
+import { LanguageSelector } from "../components/language-selector";
 import { PublicWishlistClient } from "../components/public-wishlist-client";
 // import { appHref } from "../lib/routing";
 import { parsePublicWishlistStartParam } from "../lib/routing";
 import { SLOT_PURCHASE_DISABLED } from "../lib/slot-purchase";
-import { authenticateWithTelegram, getTelegramInitData, getTelegramStartParam, prepareTelegramWebApp } from "../lib/telegram-auth";
+import { DEFAULT_LANGUAGE, normalizeLanguage, t, type SupportedLanguage } from "../lib/i18n";
+import { authenticateWithTelegram, getTelegramInitData, getTelegramStartParam, openTelegramInvoice, prepareTelegramWebApp } from "../lib/telegram-auth";
 
 type MineResponse = {
   limit: number;
@@ -32,6 +34,7 @@ export default function HomePage() {
   const [ownerId, setOwnerId] = useState<string | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [isAddingGift, setIsAddingGift] = useState(false);
+  const [language, setLanguage] = useState<SupportedLanguage>(DEFAULT_LANGUAGE);
 
   async function load() {
     try {
@@ -46,7 +49,7 @@ export default function HomePage() {
         }
       }
 
-      setError(err instanceof Error ? err.message : "Не удалось загрузить wishlist");
+        setError(err instanceof Error ? err.message : (t(language, "loadWishlistFailed") as string));
     }
   }
 
@@ -64,15 +67,16 @@ export default function HomePage() {
     authenticateWithTelegram({ initData: getTelegramInitData() })
       .then((result) => {
         if (!result) {
-          setError("Open the app from the Telegram bot to sign in.");
+          setError(t(language, "openFromTelegram") as string);
           return;
         }
 
+        setLanguage(normalizeLanguage(result.user?.preferredLanguage));
         setAuthReady(true);
         void load();
       })
       .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : "Telegram sign-in failed");
+        setError(err instanceof Error ? err.message : (t(language, "telegramSignInFailed") as string));
       });
   }, []);
 
@@ -100,9 +104,9 @@ export default function HomePage() {
       });
       setSelection(emptySelection);
       await load();
-      setStatusMessage("Подарок добавлен в список.");
+      setStatusMessage(t(language, "giftAdded") as string);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось добавить подарок");
+      setError(err instanceof Error ? err.message : (t(language, "addGiftFailed") as string));
     } finally {
       setIsAddingGift(false);
     }
@@ -113,9 +117,35 @@ export default function HomePage() {
     await load();
   }
 
-  async function buySlotStub() {
-    await api("/stars/wishlist-slot/stub", { method: "POST" });
-    await load();
+  async function changeLanguage(nextLanguage: SupportedLanguage) {
+    setLanguage(nextLanguage);
+    if (authReady) {
+      await api("/auth/me/language", {
+        method: "PATCH",
+        body: JSON.stringify({ language: nextLanguage })
+      });
+    }
+  }
+
+  async function buySlot() {
+    const invoice = await api<{ invoiceLink: string; paymentId: string }>("/stars/wishlist-slot/invoice", {
+      method: "POST",
+      body: JSON.stringify({ language })
+    });
+
+    const opened = openTelegramInvoice(invoice.invoiceLink, (status) => {
+      if (status === "paid") {
+        setStatusMessage(t(language, "slotPaid") as string);
+        window.setTimeout(() => void load(), 1000);
+        return;
+      }
+      if (status === "cancelled" || status === "failed") {
+        setStatusMessage(t(language, "slotCancelled") as string);
+      }
+    });
+    if (!opened) {
+      setError(t(language, "slotInvoiceUnavailable") as string);
+    }
   }
 
   return (
@@ -124,9 +154,10 @@ export default function HomePage() {
         <div>
           <h1 className="title">Gift Wishes</h1>
           <div className="muted">
-            {wishlist.items.length}/{wishlist.limit} слотов
+            {wishlist.items.length}/{wishlist.limit} {t(language, "slots") as string}
           </div>
         </div>
+        <LanguageSelector language={language} onChange={changeLanguage} />
         {/*
           Wallet UI is temporarily disabled.
           <a className="button secondary" href={appHref("/wallet")}>
@@ -138,21 +169,21 @@ export default function HomePage() {
       {error ? <p className="card">{error}</p> : null}
       {statusMessage ? <p className="card success-card">{statusMessage}</p> : null}
 
-      <GiftPicker value={selection} onChange={setSelection} />
+      <GiftPicker value={selection} onChange={setSelection} language={language} />
 
       <div className="button-row">
         <button className="button" type="button" onClick={addGift} disabled={!authReady || !selection.collectionName || !selection.modelName || isAddingGift}>
           {isAddingGift ? <LoaderCircle className="spin" size={18} /> : <Plus size={18} />}
-          {isAddingGift ? "Добавляю..." : "Добавить"}
+          {isAddingGift ? (t(language, "addingGift") as string) : (t(language, "addGift") as string)}
         </button>
-        <button className="button secondary" type="button" onClick={buySlotStub} disabled={!authReady || SLOT_PURCHASE_DISABLED}>
-          + слот за 50 Stars
+        <button className="button secondary" type="button" onClick={buySlot} disabled={!authReady || SLOT_PURCHASE_DISABLED}>
+          {t(language, "buySlot") as string}
         </button>
       </div>
 
       <div className="grid" style={{ marginTop: 12 }}>
         {wishlist.items.map((item) => (
-          <GiftCard key={item.id} item={item} canDelete onDelete={removeGift} />
+          <GiftCard key={item.id} item={item} canDelete onDelete={removeGift} language={language} />
         ))}
       </div>
     </main>

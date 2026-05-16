@@ -13,6 +13,7 @@ import {
   type GiftCollection
 } from "../lib/gift-picker-data";
 import { publicAssetHref } from "../lib/routing";
+import { DEFAULT_LANGUAGE, t, type SupportedLanguage } from "../lib/i18n";
 
 export type GiftSelection = {
   collectionName: string;
@@ -26,6 +27,7 @@ type PickerMode = "closed" | "collections" | "models" | "backdrops" | "patterns"
 type Props = {
   value: GiftSelection;
   onChange: (value: GiftSelection) => void;
+  language?: SupportedLanguage;
 };
 
 const catalogCollections = normalizeCatalog(giftCatalog);
@@ -129,7 +131,7 @@ function AttributeTile({
   );
 }
 
-export function GiftPicker({ value, onChange }: Props) {
+export function GiftPicker({ value, onChange, language = DEFAULT_LANGUAGE }: Props) {
   const [mode, setMode] = useState<PickerMode>("closed");
   const [query, setQuery] = useState("");
 
@@ -170,21 +172,21 @@ export function GiftPicker({ value, onChange }: Props) {
   return (
     <section className="card picker-card">
       <div className="picker-title-row">
-        <h2 className="card-title">Добавить подарок</h2>
-        <span className="muted">Выберите подарок из каталога</span>
+        <h2 className="card-title">{t(language, "addGiftTitle") as string}</h2>
+        <span className="muted">{t(language, "addGiftSubtitle") as string}</span>
       </div>
 
       <div className="selected-gift-row">
-        <button className="icon-button" type="button" aria-label="Предыдущий подарок" onClick={() => selectAdjacentCollection(-1)}>
+        <button className="icon-button" type="button" aria-label={t(language, "previousGift") as string} onClick={() => selectAdjacentCollection(-1)}>
           <ArrowLeft size={20} />
         </button>
         <button className="selected-gift-button" type="button" onClick={toggleCollections}>
           <span className="gift-chip-media">
             <GiftImage src={selectedCollectionImageSrc} fallback={value.collectionName ? initials(value.collectionName) : "GW"} />
           </span>
-          <span>{value.collectionName || "Выбрать подарок"}</span>
+          <span>{value.collectionName || (t(language, "chooseGift") as string)}</span>
         </button>
-        <button className="icon-button" type="button" aria-label="Следующий подарок" onClick={() => selectAdjacentCollection(1)}>
+        <button className="icon-button" type="button" aria-label={t(language, "nextGift") as string} onClick={() => selectAdjacentCollection(1)}>
           <ChevronRight size={20} />
         </button>
       </div>
@@ -192,13 +194,13 @@ export function GiftPicker({ value, onChange }: Props) {
       {value.collectionName ? (
         <div className="picker-tabs">
           <button className={value.modelName ? "selected" : ""} type="button" onClick={() => openAttributeMode("models")}>
-            {value.modelName || "Все модели"}
+            {value.modelName || (t(language, "allModels") as string)}
           </button>
           <button className={value.backdropName ? "selected" : ""} type="button" onClick={() => openAttributeMode("backdrops")}>
-            {value.backdropName || "Все фоны"}
+            {value.backdropName || (t(language, "allBackdrops") as string)}
           </button>
           <button className={value.symbolName ? "selected" : ""} type="button" onClick={() => openAttributeMode("patterns")}>
-            {value.symbolName || "Все узоры"}
+            {value.symbolName || (t(language, "allPatterns") as string)}
           </button>
         </div>
       ) : null}
@@ -207,9 +209,9 @@ export function GiftPicker({ value, onChange }: Props) {
         <div className="picker-panel">
           <div className="search-row">
             <Search size={18} />
-            <input className="search-input" placeholder={mode === "collections" ? "Поиск" : "Поиск..."} value={query} onChange={(event) => setQuery(event.target.value)} />
+            <input className="search-input" placeholder={mode === "collections" ? (t(language, "search") as string) : `${t(language, "search") as string}...`} value={query} onChange={(event) => setQuery(event.target.value)} />
             {query ? (
-              <button className="plain-icon" type="button" aria-label="Очистить поиск" onClick={() => setQuery("")}>
+              <button className="plain-icon" type="button" aria-label={t(language, "clearSearch") as string} onClick={() => setQuery("")}>
                 <X size={18} />
               </button>
             ) : null}
