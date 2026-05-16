@@ -30,3 +30,11 @@ Expose the local API on port `4000` with:
 ```bash
 npm run ngrok:api
 ```
+
+## Backend deploy
+
+Update the backend on the server with:
+
+```bash
+npm run deploy:backend
+```

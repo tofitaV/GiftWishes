@@ -12,6 +12,7 @@
     "lint": "npm run lint -ws --if-present",
     "typecheck": "npm run typecheck -ws --if-present",
     "test": "npm run test -ws --if-present",
+    "deploy:backend": "bash scripts/deploy-backend.sh",
     "ngrok:api": "ngrok http 4000",
     "gift-catalog:generate": "node scripts/generate-gift-catalog.mjs",
     "gift-emojis:generate": "node scripts/generate-gift-model-emojis.mjs",
